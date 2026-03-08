@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment / secrets – NEVER commit these
+.env
+*.env
+.env.*
+
+# Streamlit secrets (managed via Streamlit Cloud dashboard)
+# .streamlit/secrets.toml   ← uncommit this line if you want to exclude
+
+# Local data & uploads
+data/uploads/
+data/chroma_db/
+data/memory.db
+data/sample_audio/
+
+# Debug / temp files
+debug_solve.py
+debug_output.txt
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# EasyOCR model cache (large – downloads automatically)
