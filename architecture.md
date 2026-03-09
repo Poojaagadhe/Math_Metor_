@@ -248,16 +248,16 @@ graph TD
 
 ## Technology Stack
 
-- **Backend**: Python 3.9+
-- **LLM**: OpenAI GPT-4 / GPT-3.5-turbo
-- **OCR**: EasyOCR
-- **ASR**: OpenAI Whisper
-- **Vector Store**: ChromaDB
-- **Embeddings**: OpenAI text-embedding-3-small
-- **Database**: SQLite
-- **UI**: Streamlit
-- **Math Tools**: SymPy
-- **Framework**: LangChain (for agent orchestration)
+  - Backend: Python 3.9+
+  - LLM: Groq (llama-3.1-8b-instant) [default]
+  - OCR: EasyOCR
+  - ASR: Groq Whisper (whisper-large-v3-turbo) [primary] / OpenAI Whisper [fallback]
+  - Vector Store: ChromaDB
+  - Embeddings: sentence-transformers (all-MiniLM-L6-v2) [default]
+  - Database: SQLite
+  - UI: Streamlit
+  - Math Tools: SymPy
+  - Framework: Custom multi-agent system (no LangChain)
 
 ## Deployment Architecture
 
@@ -277,10 +277,6 @@ graph LR
 - ChromaDB: Vector embeddings
 - SQLite: Problem history and feedback
 - File System: Uploaded images/audio
-
-**External Services**:
-- OpenAI API: LLM and embeddings
-- (Optional) Alternative LLM providers
 
 ## Security & Privacy
 
