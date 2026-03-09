@@ -1,4 +1,6 @@
+# ---------------------------
 # Python
+# ---------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -12,46 +14,80 @@ dist/
 build/
 .eggs/
 
-# Virtual environment
+# ---------------------------
+# Virtual Environments
+# ---------------------------
 venv/
 env/
 ENV/
 .venv/
 
-# Environment / secrets – NEVER commit these
+# ---------------------------
+# Environment / Secrets
+# ---------------------------
 .env
 *.env
 .env.*
 
-# Streamlit secrets (managed via Streamlit Cloud dashboard)
-# .streamlit/secrets.toml   ← uncommit this line if you want to exclude
+# ---------------------------
+# Streamlit
+# ---------------------------
+.streamlit/secrets.toml
 
-# Local data & uploads
+# ---------------------------
+# Data / Databases
+# ---------------------------
 data/uploads/
 data/chroma_db/
 data/memory.db
 data/sample_audio/
 
-# Debug / temp files
-debug_solve.py
-debug_output.txt
+# ---------------------------
+# Vector DB / RAG artifacts
+# ---------------------------
+*.index
+*.faiss
+*.pkl
 
+# ---------------------------
 # Logs
+# ---------------------------
 *.log
 logs/
 
-# OS files
+# ---------------------------
+# Temporary / Debug
+# ---------------------------
+debug_solve.py
+debug_output.txt
+
+# ---------------------------
+# OS Files
+# ---------------------------
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# IDE
+# ---------------------------
+# IDE / Editor
+# ---------------------------
 .vscode/
 .idea/
 *.swp
 *.swo
 
+# ---------------------------
 # Jupyter
+# ---------------------------
 .ipynb_checkpoints/
 
-# EasyOCR model cache (large – downloads automatically)
+# ---------------------------
+# ML Model Cache
+# ---------------------------
+models/
+checkpoints/
+*.pt
+*.pth
+
+# EasyOCR model cache
+easyocr_models/
