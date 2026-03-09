@@ -25,7 +25,8 @@ A reliable multimodal AI application that solves JEE-style math problems with st
 ### Prerequisites
 
 - Python 3.9 or higher
-- OpenAI API key (or alternative LLM provider)
+- LLM_PROVIDER = _get("LLM_PROVIDER", "groq")
+
 
 ### Setup
 
@@ -118,16 +119,6 @@ math-mentor/
 
 See [architecture.md](architecture.md) for detailed system design.
 
-## API Keys Setup
-
-### OpenAI (Recommended)
-1. Sign up at https://platform.openai.com/
-2. Create an API key
-3. Add to `.env`: `OPENAI_API_KEY=sk-...`
-
-### Alternative Providers
-- **Anthropic Claude**: Add `ANTHROPIC_API_KEY` to `.env`
-- **Local Models**: Use Ollama (modify agent configurations)
 
 ## Knowledge Base Customization
 
@@ -141,7 +132,7 @@ python -m rag.vector_store --reindex
 
 ## Deployment
 
-### Streamlit Cloud (Recommended)
+### Streamlit Cloud
 
 1. Push code to GitHub
 2. Go to https://share.streamlit.io/
@@ -149,18 +140,12 @@ python -m rag.vector_store --reindex
 4. Add secrets (API keys) in Streamlit Cloud settings
 5. Deploy
 
-### Alternative Platforms
-- HuggingFace Spaces
-- Render
-- Railway
-- Vercel (with backend)
-
 ## Troubleshooting
 
 **OCR not working**
 - Ensure image is clear and well-lit
 - Try editing the extracted text manually
-- Check OCR confidence threshold in `.env`
+
 
 **Audio transcription issues**
 - Use clear audio without background noise
@@ -172,10 +157,6 @@ python -m rag.vector_store --reindex
 - Provide additional context if needed
 - Use HITL to correct and teach the system
 
-**API errors**
-- Verify API key in `.env`
-- Check API quota/billing
-- Review logs for specific error messages
 
 ## Contributing
 
@@ -185,14 +166,4 @@ Contributions welcome! Please:
 3. Add tests for new features
 4. Submit a pull request
 
-## License
 
-MIT License - see LICENSE file for details
-
-## Demo
-
-[Link to demo video]
-
-## Contact
-
-For questions or issues, please open a GitHub issue.
