@@ -131,15 +131,7 @@ python -m rag.vector_store --reindex
 ```
 
 ## Deployment
-
-### Streamlit Cloud
-
-1. Push code to GitHub
-2. Go to https://share.streamlit.io/
-3. Connect your repository
-4. Add secrets (API keys) in Streamlit Cloud settings
-5. Deploy
-
+ - app link -- https://mathmetor-338nq8qkuqsadegnbrxeyz.streamlit.app/
 ## Troubleshooting
 
 **OCR not working**
