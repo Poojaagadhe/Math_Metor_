@@ -12,3 +12,9 @@ pandas
 python-dotenv
 requests
 loguru
+matplotlib
+pix2tex
+google-generativeai
+huggingface-hub
+ollama
+langchain

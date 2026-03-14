@@ -51,7 +51,8 @@ def check_dependencies():
         'numpy',
         'sympy',
         'langchain',
-        'sentence_transformers'
+        'sentence_transformers',
+        'matplotlib'
     ]
     
     missing = []
