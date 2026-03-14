@@ -5,7 +5,6 @@ Base agent class for all agents
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 import os
-import openai
 import streamlit as st
 
 from utils.config import Config
@@ -61,72 +60,52 @@ class BaseAgent(ABC):
     # -----------------------------------------------------
 
     def _init_groq(self):
-        try:
-            from groq import Groq
+        from groq import Groq
 
-            api_key = self._get_api_key("GROQ_API_KEY")
+        api_key = self._get_api_key("GROQ_API_KEY")
 
-            if not api_key:
-                raise ValueError("GROQ_API_KEY not found")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY not found")
 
-            self.groq_client = Groq(api_key=api_key)
+        self.groq_client = Groq(api_key=api_key)
 
-            logger.info(f"{self.name} initialized with Groq model {self.model}")
-
-        except ImportError:
-            logger.error("groq package missing. Run: pip install groq")
-            raise
+        logger.info(f"{self.name} initialized with Groq model {self.model}")
 
     def _init_gemini(self):
-        try:
-            import google.generativeai as genai
+        import google.generativeai as genai
 
-            api_key = self._get_api_key("GEMINI_API_KEY")
+        api_key = self._get_api_key("GEMINI_API_KEY")
 
-            if not api_key:
-                raise ValueError("GEMINI_API_KEY not found")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found")
 
-            genai.configure(api_key=api_key)
+        genai.configure(api_key=api_key)
+        self.gemini_model = genai.GenerativeModel(self.model)
 
-            self.gemini_model = genai.GenerativeModel(self.model)
-
-            logger.info(f"{self.name} initialized with Gemini model {self.model}")
-
-        except ImportError:
-            logger.error("google-generativeai missing")
-            raise
+        logger.info(f"{self.name} initialized with Gemini model {self.model}")
 
     def _init_huggingface(self):
-        try:
-            from huggingface_hub import InferenceClient
+        from huggingface_hub import InferenceClient
 
-            api_key = self._get_api_key("HUGGINGFACE_API_KEY")
+        api_key = self._get_api_key("HUGGINGFACE_API_KEY")
 
-            if not api_key:
-                raise ValueError("HUGGINGFACE_API_KEY not found")
+        if not api_key:
+            raise ValueError("HUGGINGFACE_API_KEY not found")
 
-            self.hf_client = InferenceClient(token=api_key)
+        self.hf_client = InferenceClient(token=api_key)
 
-            logger.info(f"{self.name} initialized with HF model {self.model}")
-
-        except ImportError:
-            logger.error("huggingface_hub missing")
-            raise
+        logger.info(f"{self.name} initialized with HF model {self.model}")
 
     def _init_ollama(self):
-        try:
-            import ollama
+        import ollama
 
-            self.ollama_client = ollama
-            self.ollama_base_url = getattr(Config, "OLLAMA_BASE_URL", "http://localhost:11434")
+        self.ollama_client = ollama
+        self.ollama_base_url = getattr(Config, "OLLAMA_BASE_URL", "http://localhost:11434")
 
-            logger.info(f"{self.name} initialized with Ollama model {self.model}")
-
-        except ImportError:
-            logger.error("ollama package missing")
-            raise
+        logger.info(f"{self.name} initialized with Ollama model {self.model}")
 
     def _init_openai(self):
+        import openai
 
         api_key = self._get_api_key("OPENAI_API_KEY")
 
@@ -134,6 +113,8 @@ class BaseAgent(ABC):
             raise ValueError("OPENAI_API_KEY not found")
 
         openai.api_key = api_key
+
+        self.openai_client = openai
 
         logger.info(f"{self.name} initialized with OpenAI model {self.model}")
 
@@ -210,7 +191,7 @@ class BaseAgent(ABC):
 
             else:
 
-                response = openai.chat.completions.create(
+                response = self.openai_client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     temperature=temperature or self.temperature,
