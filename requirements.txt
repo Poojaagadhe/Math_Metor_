@@ -4,10 +4,11 @@ openai>=1.10.0
 sympy>=1.12
 easyocr>=1.7.1
 pillow>=10.0.0
-opencv-python-headless>=4.8.0
+opencv-python-headless<4.9.0
 sentence-transformers>=2.2.2
 chromadb>=0.4.15
-numpy>=1.24.0
+numpy<2.0.0
+albumentations<1.4.0
 pandas>=2.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
