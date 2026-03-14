@@ -16,9 +16,9 @@ from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Groq vision model – free tier, excellent at math notation
-GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
-GROQ_VISION_FALLBACK = "llama-3.2-11b-vision-preview"
+# Groq vision model - fast and accurate for math
+GROQ_VISION_MODEL = "llama-3.2-11b-vision-preview"
+GROQ_VISION_FALLBACK = "llama-3.2-90b-vision-preview"
 
 
 class VisionOCRProcessor:

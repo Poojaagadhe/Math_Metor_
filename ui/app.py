@@ -373,6 +373,8 @@ with tab2:
                     extracted_text = v_result["extracted_text"]
                     ocr_method = f"Groq Vision ({v_result.get('model', 'vision')})"
                     confidence = v_result.get("confidence", 0.95)
+                else:
+                    st.warning("⚠️ Groq Vision failed - falling back to secondary OCR.")
 
             # ── Pix2Tex fallback ──
             if not extracted_text:
@@ -383,8 +385,8 @@ with tab2:
                     extracted_text = latex_text if latex_text else result.get("extracted_text", "")
                     ocr_method = "Pix2Tex" if latex_text else "EasyOCR (via MathOCR)"
                     confidence = result.get("confidence", 0.0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    st.error(f"❌ Pix2Tex error: {e}")
 
             # ── EasyOCR last resort ──
             if not extracted_text:
