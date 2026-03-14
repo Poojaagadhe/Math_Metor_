@@ -1,23 +1,14 @@
-# Core UI
 streamlit
-
-# LLM provider
 groq
-
-# Math computation
+openai
 sympy
-
-# OCR (for handwritten math input)
 easyocr
 pillow
 opencv-python-headless
-
-# Data utilities
+sentence-transformers
+chromadb
 numpy
 pandas
-
-# Environment variables
 python-dotenv
-
-# Logging
+requests
 loguru
