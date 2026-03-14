@@ -131,7 +131,7 @@ python -m rag.vector_store --reindex
 ```
 
 ## Deployment
- - app link -- https://mathmetor-338nq8qkuqsadegnbrxeyz.streamlit.app/
+ - app link -- https://mathmetor-bsdkks9stvkysklstavylg.streamlit.app/
 ## Troubleshooting
 
 **OCR not working**
