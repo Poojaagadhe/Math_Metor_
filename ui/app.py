@@ -79,9 +79,39 @@ if "components" not in st.session_state:
 
 components = st.session_state["components"]
 
-
-
 # -----------------------------
+# Check Configuration Status
+# -----------------------------
+
+unconfigured_agents = [
+    (name, agent) for name, agent in components.items() 
+    if hasattr(agent, "is_configured") and not agent.is_configured
+]
+
+if unconfigured_agents:
+    st.warning("⚠️ **System Configuration Required**")
+    with st.expander("How to fix this error?", expanded=True):
+        st.markdown("""
+        Math Mentor needs an LLM API key to function. Since you are on Streamlit Cloud, you must add your keys to the dashboard secrets:
+        
+        1. Go to your **Streamlit Cloud Dashboard**.
+        2. Open your app settings -> **Secrets**.
+        3. Add your key like this:
+        ```toml
+        GROQ_API_KEY = "your_key_here"
+        LLM_PROVIDER = "groq"
+        ```
+        4. Save and reboot the app.
+        """)
+        
+        for name, agent in unconfigured_agents:
+            st.error(f"**{name}** is not configured: {agent.config_error}")
+            
+    if st.button("🔄 Check Configuration / Refresh"):
+        st.session_state.pop("components", None)
+        st.rerun()
+    
+    st.divider()
 # Sidebar
 # -----------------------------
 

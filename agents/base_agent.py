@@ -23,22 +23,28 @@ class BaseAgent(ABC):
         self.temperature = temperature or Config.AGENT_TEMPERATURE
         self.llm_provider = getattr(Config, "LLM_PROVIDER", "groq").lower()
 
+        self.is_configured = False
+        self.config_error = None
+
         logger.info(f"Initializing {self.name} with provider: {self.llm_provider}")
 
-        if self.llm_provider == "gemini":
-            self._init_gemini()
-
-        elif self.llm_provider == "groq":
-            self._init_groq()
-
-        elif self.llm_provider == "huggingface":
-            self._init_huggingface()
-
-        elif self.llm_provider == "ollama":
-            self._init_ollama()
-
-        else:
-            self._init_openai()
+        try:
+            if self.llm_provider == "gemini":
+                self._init_gemini()
+            elif self.llm_provider == "groq":
+                self._init_groq()
+            elif self.llm_provider == "huggingface":
+                self._init_huggingface()
+            elif self.llm_provider == "ollama":
+                self._init_ollama()
+            else:
+                self._init_openai()
+            
+            self.is_configured = True
+        except Exception as e:
+            self.is_configured = False
+            self.config_error = str(e)
+            logger.warning(f"{self.name} could not be fully initialized: {e}")
 
     # -----------------------------------------------------
     # API KEY RESOLVER
