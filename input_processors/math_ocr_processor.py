@@ -38,22 +38,72 @@ class MathOCRProcessor:
             self._easyocr_reader = self._get_cached_easyocr()
         return self._easyocr_reader
 
-    @staticmethod
-    def _get_cached_pix2tex():
+    @classmethod
+    def _ensure_pix2tex_weights(cls):
+        """Downloads Pix2Tex weights to local data directory to avoid site-packages permission errors."""
+        import os
+        import urllib.request
+        
+        weights_dir = Path("data/weights/pix2tex").absolute()
+        weights_dir.mkdir(parents=True, exist_ok=True)
+        
+        weights_path = weights_dir / "weights.pth"
+        resizer_path = weights_dir / "image_resizer.pth"
+        
+        base_url = "https://github.com/lukas-blecher/LaTeX-OCR/releases/download/v0.0.1/"
+        
+        if not weights_path.exists():
+            logger.info(f"Downloading Pix2Tex weights to {weights_path}...")
+            try:
+                urllib.request.urlretrieve(base_url + "weights.pth", str(weights_path))
+            except Exception as e:
+                logger.error(f"Failed to download weights.pth: {e}")
+                
+        if not resizer_path.exists():
+            logger.info(f"Downloading Pix2Tex image_resizer to {resizer_path}...")
+            try:
+                urllib.request.urlretrieve(base_url + "image_resizer.pth", str(resizer_path))
+            except Exception as e:
+                logger.error(f"Failed to download image_resizer.pth: {e}")
+        
+        return weights_dir
+
+    @classmethod
+    def _get_cached_pix2tex(cls):
         """Get or create a cached Pix2Tex model."""
         try:
             import streamlit as st
+            from munch import Munch
             @st.cache_resource(show_spinner="Initializing Pix2Tex...")
             def load_pix2tex():
                 from pix2tex.cli import LatexOCR
-                logger.info("Initializing Pix2Tex model (cached)...")
-                return LatexOCR()
+                
+                weights_dir = cls._ensure_pix2tex_weights()
+                args = Munch({
+                    'config': 'settings/config.yaml',
+                    'checkpoint': str(weights_dir / 'weights.pth'),
+                    'no_cuda': True,
+                    'no_resize': False
+                })
+                
+                logger.info("Initializing Pix2Tex model (cached) with local weights...")
+                return LatexOCR(arguments=args)
             return load_pix2tex()
         except (ImportError, Exception) as e:
             try:
                 from pix2tex.cli import LatexOCR
-                logger.info(f"Initializing Pix2Tex (non-cached): {e}")
-                return LatexOCR()
+                from munch import Munch
+                
+                weights_dir = cls._ensure_pix2tex_weights()
+                args = Munch({
+                    'config': 'settings/config.yaml',
+                    'checkpoint': str(weights_dir / 'weights.pth'),
+                    'no_cuda': True,
+                    'no_resize': False
+                })
+                
+                logger.info(f"Initializing Pix2Tex (non-cached) with local weights: {e}")
+                return LatexOCR(arguments=args)
             except ImportError:
                 logger.warning("Pix2Tex not installed")
                 return None
