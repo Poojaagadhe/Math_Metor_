@@ -217,7 +217,7 @@ Provide a clear, educational explanation that helps students understand not just
         text = problem_text.lower()
         
         # Derivative detection
-        if any(word in text for word in ['derivative', "d/dx", "dy/dx", "differentiate"]):
+        if any(word in text for word in ['derivative', "d/dx", "dy/dx", "differentiate"]) or ("'" in text and "f(" in text):
             func = self._extract_function(problem_text)
             if func:
                 return ("derivative", {"function": func, "x_range": (-5, 5)})

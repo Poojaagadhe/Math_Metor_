@@ -145,15 +145,32 @@ class SolverAgent(BaseAgent):
         # ---- 3. Derivative Detection ----
 
         try:
+            # Look for "f'(x)" or "derivative of ..."
+            derivative_requested = False
+            expr_to_diff = None
+            
+            # Pattern for f'(x)
+            if "f'(x)" in text or "derivative" in text.lower() or "d/dx" in text.lower():
+                derivative_requested = True
+                
+            if derivative_requested:
+                # Try to extract expression from f(x) = ...
+                expr_match = re.search(r"f\(x\)\s*=\s*([^,\?]+)", text)
+                if expr_match:
+                    expr_to_diff = expr_match.group(1).strip()
+                elif "=" in text:
+                    # Fallback to text after =
+                    expr_to_diff = text.split("=")[-1].strip()
+                    # Clean up trailing punctuation
+                    expr_to_diff = re.sub(r"[,\?\.!]+$", "", expr_to_diff)
 
-            if "derivative" in text.lower():
-
-                expr = text.split("=")[-1]
-                x = sp.symbols("x")
-
-                derivative = sp.diff(sp.sympify(expr), x)
-
-                return f"Derivative = {derivative}"
+                if expr_to_diff:
+                    x = sp.symbols("x")
+                    # Convert ^ to ** and perform sympify
+                    sp_expr = sp.sympify(expr_to_diff.replace("^", "**"))
+                    derivative = sp.diff(sp_expr, x)
+                    
+                    return f"f'(x) = {derivative}"
 
         except Exception as e:
             logger.warning(f"Derivative computation failed: {e}")

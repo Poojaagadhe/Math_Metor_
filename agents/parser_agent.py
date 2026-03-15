@@ -67,10 +67,19 @@ class ParserAgent(BaseAgent):
     def _clean_text(self, text: str) -> str:
         """Fix common OCR errors and normalize math symbols"""
 
+        # Common substitution errors
         text = text.replace("x3", "x^3")
         text = text.replace("z3", "z^3")
+        text = text.replace("f(z)", "f(x)") # Often misread when x has a prime next to it
+        
+        # Normalize characters
         text = text.replace("−", "-")
         text = text.replace("×", "*")
+        text = text.replace("•", "*")
+        
+        # Handle primes (OCR often turns ' into ` or .)
+        text = text.replace("f`(x)", "f'(x)")
+        text = text.replace("f.(x)", "f'(x)")
 
         text = re.sub(r"\s+", " ", text)
 
@@ -101,13 +110,17 @@ class ParserAgent(BaseAgent):
 
         text = text.lower()
 
-        if "derivative" in text or "d/dx" in text:
+        # Calculus indicators
+        if any(term in text for term in ["derivative", "d/dx", "dy/dx", "diff", "limit", "integral", "∫"]):
+            return "calculus"
+        
+        if "'" in text and ("f(" in text or "y" in text):
             return "calculus"
 
-        if "matrix" in text:
+        if "matrix" in text or "vector" in text:
             return "linear_algebra"
 
-        if "probability" in text:
+        if "probability" in text or "stat" in text:
             return "probability"
 
         return "algebra"
