@@ -20,7 +20,7 @@ except Exception as e:
     traceback.print_exc()
 
 print(f"Checking if weights exist in project directory...")
-weights_dir = Path("data/weights/pix2tex")
+weights_dir = Path("weights/pix2tex")
 if weights_dir.exists():
     for f in weights_dir.iterdir():
         print(f" - {f.name} ({f.stat().st_size / 1024 / 1024:.2f} MB)")

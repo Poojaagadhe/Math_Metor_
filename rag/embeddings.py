@@ -75,8 +75,7 @@ class EmbeddingGenerator:
     def _generate_local_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using local sentence-transformers"""
         logger.info(f"Generating local embeddings for {len(texts)} texts...")
-        
-        embeddings = self.model.encode(texts, convert_to_numpy=True)
+        embeddings = self.model.encode(texts)
         embeddings_list = embeddings.tolist()
         
         logger.info(f"Generated {len(embeddings_list)} embeddings")

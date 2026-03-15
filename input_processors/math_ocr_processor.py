@@ -44,7 +44,7 @@ class MathOCRProcessor:
         import os
         import urllib.request
         
-        weights_dir = Path("data/weights/pix2tex").absolute()
+        weights_dir = Path("weights/pix2tex").absolute()
         weights_dir.mkdir(parents=True, exist_ok=True)
         
         weights_path = weights_dir / "weights.pth"

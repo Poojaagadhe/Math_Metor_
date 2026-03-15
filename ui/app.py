@@ -386,34 +386,39 @@ with tab2:
             ocr_method = "Unknown"
             confidence = 0.0
 
-            # ── Groq Vision (best for math) ──
-            vision_ocr = get_heavy_component("vision_ocr")
-            if vision_ocr.is_available():
-                with st.spinner("🤖 Running Groq Vision OCR..."):
-                    v_result = vision_ocr.process_image(save_path)
-                if v_result.get("success") and v_result.get("extracted_text"):
-                    extracted_text = v_result["extracted_text"]
-                    ocr_method = f"Groq Vision ({v_result.get('model', 'vision')})"
-                    confidence = v_result.get("confidence", 0.95)
-                else:
-                    st.warning("⚠️ Groq Vision failed - falling back to secondary OCR.")
-
-            # ── Pix2Tex fallback ──
-            if not extracted_text:
-                try:
-                    with st.spinner("Running Pix2Tex OCR..."):
-                        result = get_heavy_component("math_ocr").process_image(save_path)
+            # ── Pix2Tex (best for math equations) ──
+            try:
+                with st.spinner("Running Pix2Tex OCR..."):
+                    result = get_heavy_component("math_ocr").process_image(save_path)
+                
+                # MathOCRProcessor falls back to easyocr internally if Pix2Tex fails. 
+                # We only consider it a Pix2Tex success if 'latex' is present or method is 'pix2tex'.
+                if result.get("method") == "pix2tex" or result.get("latex"):
                     latex_text = result.get("latex") or ""
                     extracted_text = latex_text if latex_text else result.get("extracted_text", "")
-                    ocr_method = "Pix2Tex" if latex_text else "EasyOCR (via MathOCR)"
+                    ocr_method = "Pix2Tex"
                     confidence = result.get("confidence", 0.0)
-                except Exception as e:
-                    st.error(f"❌ Pix2Tex error: {e}")
+            except Exception as e:
+                st.warning(f"⚠️ Pix2Tex error: {e} - falling back to secondary OCR.")
+
+            # ── Groq Vision fallback ──
+            if not extracted_text:
+                vision_ocr = get_heavy_component("vision_ocr")
+                if vision_ocr.is_available():
+                    with st.spinner("🤖 Running Groq Vision OCR..."):
+                        v_result = vision_ocr.process_image(save_path)
+                    if v_result.get("success") and v_result.get("extracted_text"):
+                        extracted_text = v_result["extracted_text"]
+                        ocr_method = f"Groq Vision ({v_result.get('model', 'vision')})"
+                        confidence = v_result.get("confidence", 0.95)
+                    else:
+                        st.warning("⚠️ Groq Vision failed - falling back to EasyOCR.")
 
             # ── EasyOCR last resort ──
             if not extracted_text:
-                st.warning("Vision and Pix2Tex unavailable – using EasyOCR.")
+                st.warning("Pix2Tex and Vision unavailable – using EasyOCR.")
                 with st.spinner("Running EasyOCR..."):
+                    # We can use the image processor's EasyOCR
                     result = get_heavy_component("image_processor").process_image(save_path)
                 extracted_text = result.get("extracted_text", "")
                 confidence = result.get("confidence", 0)
@@ -532,4 +537,4 @@ with tab3:
 
 st.divider()
 
-st.caption("Math Mentor • AI Multi-Agent Math Tutor")
+st.caption("Math Mentor • AI Multi-Agent Math Tutor")

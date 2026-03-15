@@ -88,6 +88,7 @@ models/
 checkpoints/
 *.pt
 *.pth
+weights/pix2tex/*
 
 # EasyOCR model cache
 easyocr_models/
