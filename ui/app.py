@@ -410,6 +410,14 @@ with tab2:
 
         st.image(uploaded_image, caption="Uploaded Image", use_container_width=True)
 
+        # ── Add Image Content Type Selector ──
+        image_type = st.radio(
+            "Select Image Content Type:",
+            ["Math Equation (Pix2Tex)", "General Text / Word Problem (Vision / EasyOCR)"],
+            horizontal=True,
+            key="ocr_image_type"
+        )
+
         # ── STEP 1: Extract button ─────────────────────────────────
         if st.button("🔍 Extract Text from Image", key="extract_image_problem"):
 
@@ -427,19 +435,20 @@ with tab2:
             confidence = 0.0
 
             # ── Pix2Tex (best for math equations) ──
-            try:
-                with st.spinner("Running Pix2Tex OCR..."):
-                    result = get_heavy_component("math_ocr").process_image(save_path)
-                
-                # MathOCRProcessor falls back to easyocr internally if Pix2Tex fails. 
-                # We only consider it a Pix2Tex success if 'latex' is present or method is 'pix2tex'.
-                if result.get("method") == "pix2tex" or result.get("latex"):
-                    latex_text = result.get("latex") or ""
-                    extracted_text = latex_text if latex_text else result.get("extracted_text", "")
-                    ocr_method = "Pix2Tex"
-                    confidence = result.get("confidence", 0.0)
-            except Exception as e:
-                st.warning(f"⚠️ Pix2Tex error: {e} - falling back to secondary OCR.")
+            if image_type == "Math Equation (Pix2Tex)":
+                try:
+                    with st.spinner("Running Pix2Tex OCR..."):
+                        result = get_heavy_component("math_ocr").process_image(save_path)
+                    
+                    # MathOCRProcessor falls back to easyocr internally if Pix2Tex fails. 
+                    # We only consider it a Pix2Tex success if 'latex' is present or method is 'pix2tex'.
+                    if result.get("method") == "pix2tex" or result.get("latex"):
+                        latex_text = result.get("latex") or ""
+                        extracted_text = latex_text if latex_text else result.get("extracted_text", "")
+                        ocr_method = "Pix2Tex"
+                        confidence = result.get("confidence", 0.0)
+                except Exception as e:
+                    st.warning(f"⚠️ Pix2Tex error: {e} - falling back to secondary OCR.")
 
             # ── Groq Vision fallback ──
             if not extracted_text:
