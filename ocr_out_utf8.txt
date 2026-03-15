@@ -1,4 +1,0 @@
-﻿2026-03-15 23:14:38 - input_processors.math_ocr_processor - INFO - MathOCRProcessor initialized (models will be lazy-loaded)
-Running OCR on data\uploads\c2e00281-668d-4277-95d7-9d5319e14487.jpg...
-2026-03-15 23:14:41 - input_processors.math_ocr_processor - INFO - Pix2Tex initialized with local weights
-Result: {'method': 'pix2tex', 'latex': '{array}{c}{{\\,\\,{}{T}8}}\\\\ {{)\\,y=(**{}+{x}**{2}-6{}+{})**{}}}\\\\ {{)\\,y=1{{}+{}}}}{array}', 'extracted_text': '{array}{c}{{\\,\\,{}{T}8}}\\\\ {{)\\,y=(**{}+{x}**{2}-6{}+{})**{}}}\\\\ {{)\\,y=1{{}+{}}}}{array}', 'raw_latex': '\\begin{array}{c}{{\\mathrm{DeffWaiWe}\\,\\mathrm{PraGilee}\\,\\bar{\\mu}\\bar{T}8}}\\\\ {{\\mathrm{1})\\,y=\\left(\\lambda^{\\dagger}+\\bar{x}^{2}-6\\bar{\\nu}+\\bar{\\gamma}\\right)^{\\dagger}}}\\\\ {{\\mathrm{2}\\right)\\,y=\\displaystyle\\frac1{\\bar{\\nu}+\\bar{\\nu}}}}\\end{array}', 'confidence': 1.0}

@@ -165,6 +165,9 @@ class MathOCRProcessor:
         latex = re.sub(r'\\;', ' ', latex)
         latex = re.sub(r'\\quad', ' ', latex)
         
+        # normalize exponents to ^ (from ** if present in OCR results or manual edits)
+        latex = latex.replace('**', '^')
+
         # normalize spaces
         latex = latex.replace('\n', ' ')
         latex = re.sub(r'\s+', ' ', latex)

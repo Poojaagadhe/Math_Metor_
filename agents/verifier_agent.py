@@ -104,6 +104,7 @@ Output ONLY valid JSON in this format:
 }
 
 Be thorough and critical. Common things to check:
+- Hallucination of Data: Does the solution use numbers, values, or points (e.g., "x=2") that are NOT in the problem text?
 - Arithmetic errors
 - Sign errors
 - Domain restrictions (division by zero, sqrt of negative, etc.)
@@ -112,7 +113,9 @@ Be thorough and critical. Common things to check:
 - Formula application
 - Logical flow
 
-If you're not confident (< 0.8), list specific concerns."""
+If the solution hallucinates missing information or solves a different problem than what was asked, set "is_correct": false and list the specific hallucinated data as an issue.
+If you're not confident (< 0.8), list specific concerns.
+"""
         
     def _create_user_prompt(
         self,

@@ -186,6 +186,11 @@ Return ONLY valid JSON in this format:
   "needs_clarification": false,
   "clarification_needed": null
 }
+
+CRITICAL: 
+- DO NOT invent numbers, variables, or constraints that are not in the provided text.
+- If the text is messy or missing parts of an equation (e.g. "f(x) =" with nothing after), mark "needs_clarification": true.
+- ONLY output the JSON.
 """
 
     # -------------------------------------------------

@@ -111,7 +111,7 @@ class SolverAgent(BaseAgent):
                     result = sp.solve(equations)
 
                 if result:
-                    return str(result)
+                    return str(result).replace('**', '^')
 
             except Exception as e:
                 logger.warning(f"Symbolic solve failed: {e}")
@@ -137,7 +137,7 @@ class SolverAgent(BaseAgent):
                     value = int(call_match.group(1))
                     result = sym_expr.subs(var, value)
 
-                    return f"f({value}) = {result}"
+                    return f"f({value}) = {result}".replace('**', '^')
 
         except Exception as e:
             logger.warning(f"Function evaluation failed: {e}")
@@ -170,7 +170,7 @@ class SolverAgent(BaseAgent):
                     sp_expr = sp.sympify(expr_to_diff.replace("^", "**"))
                     derivative = sp.diff(sp_expr, x)
                     
-                    return f"f'(x) = {derivative}"
+                    return f"f'(x) = {derivative}".replace('**', '^')
 
         except Exception as e:
             logger.warning(f"Derivative computation failed: {e}")
@@ -233,6 +233,7 @@ RULES:
 - Denote derivatives with prime notation: f'(x), f''(x).
 - Show every algebraic step explicitly – do not skip steps.
 - If the problem is ambiguous, state your assumptions at the top.
+- CRITICAL: If the problem statement is incomplete, nonsensical, or lacks a clear question, DO NOT invent or hallucinate a problem. Stop and state that the problem is incomplete and cannot be solved.
 """
 
 

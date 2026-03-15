@@ -50,6 +50,7 @@ class PlannerAgent(BaseAgent):
         system_prompt = """You are an expert at correcting mathematical OCR mistakes.
 You will be given the original text extracted by an OCR engine, and feedback on why it failed to be parsed or solved.
 Your job is to fix the OCR transcription errors (e.g. confusing 1 and l, x and \\times, missing operators, poorly formatted powers, unbalanced parentheses) to produce a logically sound mathematical expression or problem.
+CRITICAL: When formatting powers or exponents, use standard LaTeX syntax (e.g. x^{3} or x^3), NOT Python's double asterisk (**).
 Return ONLY the corrected text, nothing else."""
 
         user_prompt = f"""Original OCR Text:
