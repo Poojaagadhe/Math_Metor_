@@ -34,22 +34,32 @@ class VisionOCRProcessor:
     """
 
     def __init__(self):
-        self.client = None
+        self._client = None
         self.model = GROQ_VISION_MODEL
+        logger.info("VisionOCRProcessor initialized (client will be lazy-loaded)")
 
+    @property
+    def client(self):
+        """Lazy-load the Groq client."""
+        if self._client is None:
+            self._initialize_client()
+        return self._client
+
+    def _initialize_client(self):
+        """Initialize the Groq client."""
         if Config.LLM_PROVIDER == "groq":
             try:
                 from groq import Groq
                 groq_key = getattr(Config, "GROQ_API_KEY", None)
                 if groq_key:
-                    self.client = Groq(api_key=groq_key)
-                    logger.info(f"VisionOCRProcessor initialized with Groq vision model: {self.model}")
+                    self._client = Groq(api_key=groq_key)
+                    logger.info(f"VisionOCRProcessor client initialized with: {self.model}")
                 else:
-                    logger.warning("GROQ_API_KEY not set – VisionOCRProcessor disabled")
+                    logger.warning("GROQ_API_KEY not set – VisionOCRProcessor client remains None")
             except ImportError:
-                logger.warning("groq package not installed – VisionOCRProcessor disabled")
+                logger.warning("groq package not installed – VisionOCRProcessor client remains None")
         else:
-            logger.info("VisionOCRProcessor: LLM_PROVIDER is not groq – skipped")
+            logger.info("VisionOCRProcessor: LLM_PROVIDER is not groq")
 
     # ------------------------------------------------------------------
 

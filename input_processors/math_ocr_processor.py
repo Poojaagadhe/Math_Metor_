@@ -9,28 +9,66 @@ import numpy as np
 from PIL import Image
 import easyocr
 
-# Try importing Pix2Tex
-try:
-    from pix2tex.cli import LatexOCR
-    PIX2TEX_AVAILABLE = True
-except ImportError:
-    PIX2TEX_AVAILABLE = False
+# Removed heavy Pix2Tex imports from top level
+PIX2TEX_AVAILABLE = True # Assume available, check on load
 
 
 class MathOCRProcessor:
 
     def __init__(self):
+        self._pix2tex_model = None
+        self._easyocr_reader = None
+        logger.info("MathOCRProcessor initialized (models will be lazy-loaded)")
 
-        self.pix2tex_model = None
+    @property
+    def pix2tex_model(self):
+        """Lazy-load and cache the Pix2Tex model."""
+        if self._pix2tex_model is None:
+            self._pix2tex_model = self._get_cached_pix2tex()
+        return self._pix2tex_model
 
-        if PIX2TEX_AVAILABLE:
+    @property
+    def easyocr_reader(self):
+        """Lazy-load and cache the EasyOCR reader."""
+        if self._easyocr_reader is None:
+            self._easyocr_reader = self._get_cached_easyocr()
+        return self._easyocr_reader
+
+    @staticmethod
+    def _get_cached_pix2tex():
+        """Get or create a cached Pix2Tex model."""
+        try:
+            import streamlit as st
+            @st.cache_resource(show_spinner="Initializing Pix2Tex...")
+            def load_pix2tex():
+                from pix2tex.cli import LatexOCR
+                logger.info("Initializing Pix2Tex model (cached)...")
+                return LatexOCR()
+            return load_pix2tex()
+        except (ImportError, Exception) as e:
             try:
-                self.pix2tex_model = LatexOCR()
-            except Exception:
-                self.pix2tex_model = None
+                from pix2tex.cli import LatexOCR
+                logger.info(f"Initializing Pix2Tex (non-cached): {e}")
+                return LatexOCR()
+            except ImportError:
+                logger.warning("Pix2Tex not installed")
+                return None
 
-        # EasyOCR fallback
-        self.easyocr_reader = easyocr.Reader(["en"], gpu=False)
+    @staticmethod
+    def _get_cached_easyocr():
+        """Get or create a cached EasyOCR reader."""
+        try:
+            import streamlit as st
+            @st.cache_resource(show_spinner="Initializing OCR engine...")
+            def load_reader():
+                import easyocr
+                logger.info("Initializing EasyOCR reader (cached)...")
+                return easyocr.Reader(["en"], gpu=False)
+            return load_reader()
+        except (ImportError, Exception) as e:
+            import easyocr
+            logger.info(f"Initializing EasyOCR reader (non-cached): {e}")
+            return easyocr.Reader(["en"], gpu=False)
 
     # --------------------------------------------------
 

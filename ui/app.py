@@ -57,10 +57,10 @@ st.caption("AI-Powered Math Problem Solver")
 # session_state survives reruns within a session but resets on browser refresh
 # or server restart — ensuring updated code is always picked up.
 
-def _build_components():
+@st.cache_resource(show_spinner="Initializing Core Agents...")
+def get_base_components():
+    """Initialize lightweight agents and core utilities once per server session."""
     return {
-        "image_processor": ImageProcessor(),
-        "audio_processor": AudioProcessor(),
         "text_processor": TextProcessor(),
         "parser_agent": ParserAgent(),
         "router_agent": RouterAgent(),
@@ -70,21 +70,42 @@ def _build_components():
         "memory_store": MemoryStore(),
         "learning_engine": LearningEngine(),
         "hitl_manager": HITLManager(),
-        "math_ocr": MathOCRProcessor(),
-        "vision_ocr": VisionOCRProcessor(),
     }
 
-if "components" not in st.session_state:
-    st.session_state["components"] = _build_components()
+def get_heavy_component(name):
+    """Retrieve or initialize heavy ML components on demand."""
+    if name not in st.session_state["heavy_components"]:
+        with st.spinner(f"Loading {name.replace('_', ' ').title()}..."):
+            if name == "image_processor":
+                st.session_state["heavy_components"][name] = ImageProcessor()
+            elif name == "audio_processor":
+                st.session_state["heavy_components"][name] = AudioProcessor()
+            elif name == "math_ocr":
+                st.session_state["heavy_components"][name] = MathOCRProcessor()
+            elif name == "vision_ocr":
+                st.session_state["heavy_components"][name] = VisionOCRProcessor()
+    
+    return st.session_state["heavy_components"][name]
 
-components = st.session_state["components"]
+# Initialize base components if not present
+if "base_components" not in st.session_state:
+    st.session_state["base_components"] = get_base_components()
+
+# Initialize container for heavy components if not present
+if "heavy_components" not in st.session_state:
+    st.session_state["heavy_components"] = {}
+
+# Shortcut for compatibility with existing code
+# We'll replace manual 'components' lookups for heavy items with a proxy or direct function call
+# but keep 'base' items as is for minimal diff.
+base_components = st.session_state["base_components"]
 
 # -----------------------------
 # Check Configuration Status
 # -----------------------------
 
 unconfigured_agents = [
-    (name, agent) for name, agent in components.items() 
+    (name, agent) for name, agent in base_components.items() 
     if hasattr(agent, "is_configured") and not agent.is_configured
 ]
 
@@ -108,7 +129,8 @@ if unconfigured_agents:
             st.error(f"**{name}** is not configured: {agent.config_error}")
             
     if st.button("🔄 Check Configuration / Refresh"):
-        st.session_state.pop("components", None)
+        st.session_state.pop("base_components", None)
+        st.session_state.pop("heavy_components", None)
         st.rerun()
     
     st.divider()
@@ -129,7 +151,7 @@ with st.sidebar:
     - Human-in-the-loop verification
     """)
 
-    stats = components["memory_store"].get_stats()
+    stats = base_components["memory_store"].get_stats()
 
     st.metric("Problems Solved", stats.get("total_problems", 0))
 
@@ -149,7 +171,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     with st.status("Parser Agent Running..."):
 
-        parsed = components["parser_agent"].run({
+        parsed = base_components["parser_agent"].run({
             "text": problem_text,
             "source": source
         })
@@ -163,7 +185,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     with st.status("Router Agent Running..."):
 
-        routing = components["router_agent"].run(parsed)
+        routing = base_components["router_agent"].run(parsed)
 
         trace["router"] = {
             "status": "completed",
@@ -172,7 +194,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     # ---------------- Similar Problems ----------------
 
-    similar = components["learning_engine"].find_similar_solved_problems(
+    similar = base_components["learning_engine"].find_similar_solved_problems(
         parsed.get("topic"),
         limit=3
     )
@@ -184,7 +206,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     with st.status("Solver Agent Running..."):
 
-        solution = components["solver_agent"].run({
+        solution = base_components["solver_agent"].run({
             "problem_text": parsed.get("problem_text"),
             "topic": parsed.get("topic"),
             "routing": routing,
@@ -200,7 +222,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     with st.status("Verifier Agent Running..."):
 
-        verification = components["verifier_agent"].run({
+        verification = base_components["verifier_agent"].run({
             "problem_text": parsed.get("problem_text"),
             "solution": solution.get("solution"),
             "steps": solution.get("steps"),
@@ -216,7 +238,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     with st.status("Explainer Agent Running..."):
 
-        explanation = components["explainer_agent"].run({
+        explanation = base_components["explainer_agent"].run({
             "problem_text": parsed.get("problem_text"),
             "solution": solution.get("solution"),
             "steps": solution.get("steps"),
@@ -277,7 +299,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
     problem_id = str(uuid.uuid4())
 
-    components["memory_store"].store_problem({
+    base_components["memory_store"].store_problem({
         "problem_id": problem_id,
         "input_type": source,
         # Align field names with memory_store.py column expectations
@@ -365,7 +387,7 @@ with tab2:
             confidence = 0.0
 
             # ── Groq Vision (best for math) ──
-            vision_ocr = components["vision_ocr"]
+            vision_ocr = get_heavy_component("vision_ocr")
             if vision_ocr.is_available():
                 with st.spinner("🤖 Running Groq Vision OCR..."):
                     v_result = vision_ocr.process_image(save_path)
@@ -380,7 +402,7 @@ with tab2:
             if not extracted_text:
                 try:
                     with st.spinner("Running Pix2Tex OCR..."):
-                        result = components["math_ocr"].process_image(save_path)
+                        result = get_heavy_component("math_ocr").process_image(save_path)
                     latex_text = result.get("latex") or ""
                     extracted_text = latex_text if latex_text else result.get("extracted_text", "")
                     ocr_method = "Pix2Tex" if latex_text else "EasyOCR (via MathOCR)"
@@ -392,7 +414,7 @@ with tab2:
             if not extracted_text:
                 st.warning("Vision and Pix2Tex unavailable – using EasyOCR.")
                 with st.spinner("Running EasyOCR..."):
-                    result = components["image_processor"].process_image(save_path)
+                    result = get_heavy_component("image_processor").process_image(save_path)
                 extracted_text = result.get("extracted_text", "")
                 confidence = result.get("confidence", 0)
                 ocr_method = "EasyOCR"
@@ -472,7 +494,7 @@ with tab3:
                 f.write(uploaded_audio.getbuffer())
 
             with st.spinner("Transcribing audio..."):
-                result = components["audio_processor"].process_audio(save_path)
+                result = get_heavy_component("audio_processor").process_audio(save_path)
 
             transcript = result.get("transcript", "")
 

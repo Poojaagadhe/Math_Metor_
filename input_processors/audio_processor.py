@@ -14,40 +14,48 @@ class AudioProcessor:
     """Processes audio inputs and converts to text using Groq's Whisper endpoint"""
 
     def __init__(self):
-        """Initialize Groq Whisper client"""
-        self.client = None
+        """Initialize AudioProcessor"""
+        self._client = None
+        self.provider = None
         self.hitl_manager = HITLManager()
+        logger.info("AudioProcessor initialized (transcription client will be lazy-loaded)")
 
-        # Try Groq first (user's active provider)
+    @property
+    def client(self):
+        """Lazy-load the transcription client."""
+        if self._client is None and self.provider is None:
+            self._initialize_client()
+        return self._client
+
+    def _initialize_client(self):
+        """Initialize Groq or OpenAI client."""
+        # Try Groq first
         groq_key = getattr(Config, "GROQ_API_KEY", None)
         if groq_key:
             try:
                 from groq import Groq
-                self.client = Groq(api_key=groq_key)
+                self._client = Groq(api_key=groq_key)
                 self.provider = "groq"
-                logger.info("AudioProcessor initialized with Groq Whisper")
+                logger.info("AudioProcessor client initialized with Groq Whisper")
+                return
             except ImportError:
                 logger.warning("groq package not installed")
 
         # Fallback: OpenAI Whisper
-        if not self.client:
-            openai_key = getattr(Config, "OPENAI_API_KEY", None)
-            if openai_key:
-                try:
-                    import openai
-                    openai.api_key = openai_key
-                    self._openai = openai
-                    self.provider = "openai"
-                    logger.info("AudioProcessor initialized with OpenAI Whisper")
-                except ImportError:
-                    pass
+        openai_key = getattr(Config, "OPENAI_API_KEY", None)
+        if openai_key:
+            try:
+                import openai
+                # Local import to avoid top-level slow import
+                self._client = openai.OpenAI(api_key=openai_key)
+                self.provider = "openai"
+                logger.info("AudioProcessor client initialized with OpenAI Whisper")
+                return
+            except (ImportError, AttributeError):
+                pass
 
-        if not self.client and not hasattr(self, "_openai"):
-            logger.warning(
-                "AudioProcessor: No API key found for Groq or OpenAI. "
-                "Audio transcription will not be available."
-            )
-            self.provider = None
+        logger.warning("AudioProcessor: No API key found for Groq or OpenAI.")
+        self.provider = "unavailable"
 
     # ------------------------------------------------------------------
 
@@ -68,7 +76,7 @@ class AudioProcessor:
         """
         logger.info("Processing audio input...")
 
-        if not self.provider:
+        if self.provider == "unavailable" or (self.provider is None and self.client is None and self.provider == "unavailable"):
             return self._unavailable_result()
 
         # Resolve to a file path
@@ -142,7 +150,7 @@ class AudioProcessor:
     def _transcribe_openai(self, audio_path: str):
         """Transcribe using OpenAI Whisper API."""
         with open(audio_path, "rb") as f:
-            response = self._openai.audio.transcriptions.create(
+            response = self.client.audio.transcriptions.create(
                 model="whisper-1",
                 file=f,
                 response_format="verbose_json"

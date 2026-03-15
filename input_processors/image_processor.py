@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageEnhance
-import easyocr
+# Removed easyocr from top level to avoid slow import on startup
 
 from utils.config import Config
 from utils.logger import setup_logger
@@ -14,16 +14,40 @@ from utils.hitl import HITLManager, HITLTrigger
 
 logger = setup_logger(__name__)
 
-
 class ImageProcessor:
     """Handles image uploads and performs OCR extraction"""
 
     def __init__(self):
-        """Initialize EasyOCR reader"""
-        logger.info("Initializing EasyOCR reader...")
-        self.reader = easyocr.Reader(Config.OCR_LANGUAGES, gpu=False)
+        """Initialize ImageProcessor"""
         self.hitl_manager = HITLManager()
-        logger.info("EasyOCR reader initialized")
+        self._reader = None
+        logger.info("ImageProcessor initialized (reader will be lazy-loaded)")
+
+    @property
+    def reader(self):
+        """Lazy-load the EasyOCR reader and cache it using Streamlit."""
+        if self._reader is None:
+            self._reader = self._get_cached_reader()
+        return self._reader
+
+    @staticmethod
+    def _get_cached_reader():
+        """Get or create a cached EasyOCR reader."""
+        try:
+            import streamlit as st
+            # Use st.cache_resource to share the reader across sessions
+            @st.cache_resource(show_spinner="Initializing OCR engine...")
+            def load_reader():
+                import easyocr
+                logger.info("Initializing EasyOCR reader (cached)...")
+                return easyocr.Reader(Config.OCR_LANGUAGES, gpu=False)
+            
+            return load_reader()
+        except (ImportError, Exception) as e:
+            # Fallback for non-streamlit environments or if cache fails
+            import easyocr
+            logger.info(f"Initializing EasyOCR reader (non-cached, fallback): {e}")
+            return easyocr.Reader(Config.OCR_LANGUAGES, gpu=False)
 
     def process_image(
         self,
