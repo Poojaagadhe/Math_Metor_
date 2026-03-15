@@ -9,6 +9,10 @@ import numpy as np
 from PIL import Image
 import easyocr
 
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
+
 # Removed heavy Pix2Tex imports from top level
 PIX2TEX_AVAILABLE = True # Assume available, check on load
 
