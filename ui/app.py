@@ -21,6 +21,7 @@ from agents.router_agent import RouterAgent
 from agents.solver_agent import SolverAgent
 from agents.verifier_agent import VerifierAgent
 from agents.explainer_agent import ExplainerAgent
+from agents.planner_agent import PlannerAgent
 
 # Memory
 from memory.memory_store import MemoryStore
@@ -67,6 +68,7 @@ def get_base_components():
         "solver_agent": SolverAgent(),
         "verifier_agent": VerifierAgent(),
         "explainer_agent": ExplainerAgent(),
+        "planner_agent": PlannerAgent(),
         "memory_store": MemoryStore(),
         "learning_engine": LearningEngine(),
         "hitl_manager": HITLManager(),
