@@ -1,0 +1,16 @@
+﻿2026-03-15 23:16:15 - input_processors.math_ocr_processor - INFO - MathOCRProcessor initialized (models will be lazy-loaded)
+python : 2026-03-15 23:16:15.591 Thread 'MainThread': 
+missing ScriptRunContext! This warning can be ignored 
+when running in bare mode.
+At line:1 char:1
++ python test_ocr_upload.py > ocr_out2.txt 2>&1 ; cat 
+ocr_out2.txt
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026    
+-03-15 23:1...g in bare mode.:String) [], Rem    
+oteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Running OCR on data\uploads\c2e00281-668d-4277-95d7-9d5319e14487.jpg...
+2026-03-15 23:16:19 - input_processors.math_ocr_processor - INFO - Pix2Tex initialized with local weights
+Result: {'method': 'pix2tex', 'latex': '\\begin{array}{c}{{ {\\mu}{T}8}}\\\\ {{) y=(\\lambda**{\\dagger}+{x}**{2}-6{\\nu}+{\\gamma})**{\\dagger}}}\\\\ {{}}\\\\ {{}}\\\\ {{}}\\end{array}', 'extracted_text': '\\begin{array}{c}{{ {\\mu}{T}8}}\\\\ {{) y=(\\lambda**{\\dagger}+{x}**{2}-6{\\nu}+{\\gamma})**{\\dagger}}}\\\\ {{}}\\\\ {{}}\\\\ {{}}\\end{array}', 'raw_latex': '\\begin{array}{c}{{\\mathrm{DeffWaiWe}\\,\\mathrm{PraGilee}\\,\\bar{\\mu}\\bar{T}8}}\\\\ {{\\mathrm{l})\\,y=\\left(\\lambda^{\\dagger}+\\bar{x}^{2}-6\\bar{\\nu}+\\bar{\\gamma}\\right)^{\\dagger}}}\\\\ {{\\mathrm{~}}}\\\\ {{\\mathrm{~}}}\\\\ {{\\mathrm{~}}}\\end{array}', 'confidence': 1.0}

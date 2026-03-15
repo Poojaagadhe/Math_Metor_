@@ -145,21 +145,29 @@ class MathOCRProcessor:
 
     def _clean_latex(self, latex: str) -> str:
         """
-        Remove formatting tokens and normalize LaTeX
-        so it can be parsed by the solver.
+        Remove purely formatting tokens while preserving math structures 
+        (like \\sin, \\cos, \\mu, \\theta, \\frac, etc.)
         """
 
         if not latex:
             return latex
 
-        # remove formatting tokens
+        # remove common font styles/formatting
         latex = re.sub(r'\\left|\\right', '', latex)
         latex = re.sub(r'\\bf', '', latex)
         latex = re.sub(r'\\mathrm\{.*?\}', '', latex)
+        latex = re.sub(r'\\mathit\{.*?\}', '', latex)
+        latex = re.sub(r'\\mathbf\{.*?\}', '', latex)
+        latex = re.sub(r'\\text\{.*?\}', '', latex)
         latex = re.sub(r'\\bar', '', latex)
-
-        # remove stray commands
-        latex = re.sub(r'\\[a-zA-Z]+', '', latex)
+        latex = re.sub(r'\\,', ' ', latex)
+        latex = re.sub(r'\\:', ' ', latex)
+        latex = re.sub(r'\\;', ' ', latex)
+        latex = re.sub(r'\\quad', ' ', latex)
+        
+        # normalize spaces
+        latex = latex.replace('\n', ' ')
+        latex = re.sub(r'\s+', ' ', latex)
 
         # normalize exponent
         latex = latex.replace("^", "**")

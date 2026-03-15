@@ -1,0 +1,27 @@
+[
+  [
+    "Q1. A fair coin is tossed once. What is the probability of getting heads?",
+    "probability",
+    "The probability of getting heads when a fair coin is tossed once is 1/2 or 0.5."
+  ],
+  [
+    "Q1. If $f(x) = x^3$, what is $f'(x)$?",
+    "algebra",
+    "$f'(x) = 3x^2$"
+  ],
+  [
+    "A bag contains three red balls and seven blue balls. What is the probability of picking a red ball?",
+    "probability",
+    "The probability of picking a red ball is 3/10."
+  ],
+  [
+    "What is the integral of x^2 with respect to x?",
+    "algebra",
+    "\u222bx^2 dx = (x^3)/3"
+  ],
+  [
+    "Find the roots of x^2 - 5x + 6 = 0.",
+    "algebra",
+    "The roots of the quadratic equation x^2 - 5x + 6 = 0 are x = 2 and x = 3."
+  ]
+]
