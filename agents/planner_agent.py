@@ -42,3 +42,28 @@ class PlannerAgent(BaseAgent):
             return {"strategy": "rag_reasoning"}
 
         return {"strategy": "llm_reasoning"}
+
+    def plan_ocr_correction(self, text: str, feedback: str) -> str:
+        """Correct OCR mistakes based on feedback from the verifier."""
+        logger.info("PlannerAgent planning OCR correction...")
+        
+        system_prompt = """You are an expert at correcting mathematical OCR mistakes.
+You will be given the original text extracted by an OCR engine, and feedback on why it failed to be parsed or solved.
+Your job is to fix the OCR transcription errors (e.g. confusing 1 and l, x and \\times, missing operators, poorly formatted powers, unbalanced parentheses) to produce a logically sound mathematical expression or problem.
+Return ONLY the corrected text, nothing else."""
+
+        user_prompt = f"""Original OCR Text:
+{text}
+
+Feedback/Issues found during verification/parsing:
+{feedback}
+
+Please provide the corrected math problem text exactly as it should be processed:"""
+
+        messages = [
+            self._create_system_message(system_prompt),
+            self._create_user_message(user_prompt)
+        ]
+
+        response = self._call_llm(messages, max_tokens=500)
+        return response.strip()

@@ -165,74 +165,112 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
     st.divider()
     st.header("Processing Pipeline")
 
-    trace = {}
+    current_text = problem_text
+    max_retries = 2
+    attempt = 0
+    
+    while attempt <= max_retries:
+        if attempt > 0:
+            st.warning(f"🔄 OCR Self-Correction Attempt {attempt}/{max_retries}...")
+            
+        trace = {}
 
-    # ---------------- Parser Agent ----------------
+        # ---------------- Parser Agent ----------------
 
-    with st.status("Parser Agent Running..."):
+        with st.status(f"Parser Agent Running... (Attempt {attempt+1})"):
 
-        parsed = base_components["parser_agent"].run({
-            "text": problem_text,
-            "source": source
-        })
+            parsed = base_components["parser_agent"].run({
+                "text": current_text,
+                "source": source
+            })
 
-        trace["parser"] = {
-            "status": "completed",
-            "summary": f"Topic: {parsed.get('topic','unknown')}"
-        }
+            trace["parser"] = {
+                "status": "completed",
+                "summary": f"Topic: {parsed.get('topic','unknown')}"
+            }
 
-    # ---------------- Router Agent ----------------
+        # ---------------- Router Agent ----------------
 
-    with st.status("Router Agent Running..."):
+        with st.status(f"Router Agent Running... (Attempt {attempt+1})"):
 
-        routing = base_components["router_agent"].run(parsed)
+            routing = base_components["router_agent"].run(parsed)
 
-        trace["router"] = {
-            "status": "completed",
-            "summary": routing.get("workflow", "default")
-        }
+            trace["router"] = {
+                "status": "completed",
+                "summary": routing.get("workflow", "default")
+            }
 
-    # ---------------- Similar Problems ----------------
+        # ---------------- Similar Problems ----------------
 
-    similar = base_components["learning_engine"].find_similar_solved_problems(
-        parsed.get("topic"),
-        limit=3
-    )
+        similar = base_components["learning_engine"].find_similar_solved_problems(
+            parsed.get("topic"),
+            limit=3
+        )
 
-    if similar:
-        render_similar_problems(similar)
+        if similar and attempt == 0:
+            render_similar_problems(similar)
 
-    # ---------------- Solver Agent ----------------
+        # ---------------- Solver Agent ----------------
 
-    with st.status("Solver Agent Running..."):
+        with st.status(f"Solver Agent Running... (Attempt {attempt+1})"):
 
-        solution = base_components["solver_agent"].run({
-            "problem_text": parsed.get("problem_text"),
-            "topic": parsed.get("topic"),
-            "routing": routing,
-            "parsed_data": parsed
-        })
+            solution = base_components["solver_agent"].run({
+                "problem_text": parsed.get("problem_text"),
+                "topic": parsed.get("topic"),
+                "routing": routing,
+                "parsed_data": parsed
+            })
 
-        trace["solver"] = {
-            "status": "completed",
-            "summary": "Solution generated"
-        }
+            trace["solver"] = {
+                "status": "completed",
+                "summary": "Solution generated"
+            }
 
-    # ---------------- Verifier Agent ----------------
+        # ---------------- Verifier Agent ----------------
 
-    with st.status("Verifier Agent Running..."):
+        with st.status(f"Verifier Agent Running... (Attempt {attempt+1})"):
 
-        verification = base_components["verifier_agent"].run({
-            "problem_text": parsed.get("problem_text"),
-            "solution": solution.get("solution"),
-            "steps": solution.get("steps"),
-            "topic": parsed.get("topic")
-        })
+            verification = base_components["verifier_agent"].run({
+                "problem_text": parsed.get("problem_text"),
+                "solution": solution.get("solution"),
+                "steps": solution.get("steps"),
+                "topic": parsed.get("topic")
+            })
 
-        trace["verifier"] = {
-            "status": "completed",
-            "summary": f"Confidence {verification.get('confidence',0):.2f}"
-        }
+            trace["verifier"] = {
+                "status": "completed",
+                "summary": f"Confidence {verification.get('confidence',0):.2f}"
+            }
+
+        # ---------------- Reflection / Correction Loop ----------
+        issues = verification.get("issues_found", [])
+        is_correct = verification.get("is_correct", False)
+        confidence = verification.get("confidence", 0.0)
+
+        needs_correction = False
+        feedback = []
+
+        if not is_correct or confidence < 0.6:
+            needs_correction = True
+            feedback.extend(issues)
+        if parsed.get("needs_clarification"):
+            needs_correction = True
+            feedback.append(parsed.get("clarification_needed", ""))
+            
+        if needs_correction and source == "image" and attempt < max_retries:
+            st.info("⚠️ Verifier detected issues. Running automatic PlannerAgent OCR correction...")
+            feedback_str = "\\n".join(filter(None, feedback))
+            
+            with st.status("Planner Agent correcting OCR..."):
+                current_text = base_components["planner_agent"].plan_ocr_correction(
+                    text=current_text,
+                    feedback=feedback_str
+                )
+            
+            attempt += 1
+            continue
+            
+        break
 
     # ---------------- Explainer Agent ----------------
 
