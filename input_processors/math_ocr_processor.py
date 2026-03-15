@@ -87,19 +87,27 @@ class MathOCRProcessor:
         if self.pix2tex_model:
 
             try:
+                # Check if image is completely uniform (empty/pure white)
+                # Pix2Tex's pad() function crashes with OpenCV error on empty images
+                gray = image.convert('L')
+                extrema = gray.getextrema()
+                
+                if extrema[0] != extrema[1]: # Not empty
+                    latex = self.pix2tex_model(image)
 
-                latex = self.pix2tex_model(image)
+                    if latex:
+                        return {
+                            "method": "pix2tex",
+                            "latex": latex,
+                            "extracted_text": latex,
+                            "confidence": 1.0
+                        }
+                else:
+                    logger.warning("MathOCRProcessor: Image is completely uniform, skipping Pix2Tex to avoid OpenCV crash.")
 
-                return {
-                    "method": "pix2tex",
-                    "latex": latex,
-                    "extracted_text": latex,
-                    "confidence": 1.0
-                }
-
-            except Exception:
+            except Exception as e:
+                logger.warning(f"MathOCRProcessor: Pix2Tex extraction failed: {e}")
                 pass
-
         # -----------------------------
         # Fallback: EasyOCR
         # -----------------------------
