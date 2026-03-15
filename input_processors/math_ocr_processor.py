@@ -169,9 +169,6 @@ class MathOCRProcessor:
         latex = latex.replace('\n', ' ')
         latex = re.sub(r'\s+', ' ', latex)
 
-        # normalize exponent
-        latex = latex.replace("^", "**")
-
         # remove extra whitespace
         latex = latex.strip()
 
@@ -206,8 +203,8 @@ class MathOCRProcessor:
 
                         return {
                             "method": "pix2tex",
-                            "latex": clean_latex,
-                            "extracted_text": clean_latex,
+                            "latex": latex,  # Keep original latex for UI rendering
+                            "extracted_text": clean_latex, # Use cleaned for solver
                             "raw_latex": latex,
                             "confidence": 1.0
                         }
