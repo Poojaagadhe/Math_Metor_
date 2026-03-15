@@ -16,22 +16,27 @@ class RouterAgent(BaseAgent):
             name="RouterAgent",
             model=Config.ROUTER_MODEL
         )
-        
+
+    def detect_task(self, text: str) -> str:
+        """
+        Lightweight rule detection for math tasks.
+        """
+        text_lower = text.lower()
+
+        if any(kw in text_lower for kw in ["f'(x)", "derivative", "differentiate", "d/dx"]):
+            return "derivative"
+
+        if any(kw in text_lower for kw in ["integrate", "integral", "∫"]):
+            return "integral"
+
+        if any(kw in text_lower for kw in ["solve", "evaluate", "find", "=", "calculate"]):
+            return "solve"
+
+        return "simplify"
+
     def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Route problem to appropriate workflow
-        
-        Args:
-            input_data: Parsed problem from ParserAgent
-                
-        Returns:
-            Dictionary containing:
-                - topic: Main topic
-                - subtopic: Specific subtopic
-                - difficulty: easy|medium|hard
-                - required_tools: List of tools needed
-                - solution_strategy: Recommended approach
-                - workflow: Workflow identifier
         """
         logger.info(f"Routing problem - Topic: {input_data.get('topic')}")
         
@@ -39,6 +44,10 @@ class RouterAgent(BaseAgent):
         topic = input_data.get('topic', 'unknown')
         subtopic = input_data.get('subtopic', '')
         
+        # Automatic Task Detection
+        detected_task = self.detect_task(problem_text)
+        logger.info(f"Detected task: {detected_task}")
+
         # Create prompt
         system_prompt = self._get_system_prompt()
         user_prompt = self._create_user_prompt(problem_text, topic, subtopic)
@@ -51,27 +60,33 @@ class RouterAgent(BaseAgent):
         # Call LLM
         response = self._call_llm(messages, max_tokens=800)
 
-        # Strip markdown code fences if present (e.g. ```json ... ```)
+        # Strip markdown code fences if present
         clean_response = re.sub(r'^```(?:json)?\s*', '', response.strip(), flags=re.MULTILINE)
         clean_response = re.sub(r'```\s*$', '', clean_response.strip(), flags=re.MULTILINE)
 
-        # Parse JSON response – also handle embedded JSON object
+        # Parse JSON response
         try:
             json_start = clean_response.find("{")
             json_end = clean_response.rfind("}") + 1
             routing = json.loads(clean_response[json_start:json_end])
+            
+            # Ensure task is in routing
+            if "task" not in routing:
+                routing["task"] = detected_task
+                
         except (json.JSONDecodeError, ValueError):
             logger.error("Failed to parse routing response – using fallback")
             routing = {
                 "topic": topic,
                 "subtopic": subtopic,
                 "difficulty": "medium",
-                "required_tools": ["calculator"],
+                "required_tools": ["symbolic_solver"],
                 "solution_strategy": "standard",
-                "workflow": "general"
+                "workflow": "general",
+                "task": detected_task
             }
             
-        logger.info(f"Routed to workflow: {routing.get('workflow')}, Difficulty: {routing.get('difficulty')}")
+        logger.info(f"Routed to task: {routing.get('task')}, Difficulty: {routing.get('difficulty')}")
         
         return routing
         
@@ -91,7 +106,8 @@ Output ONLY valid JSON in this format:
   "difficulty": "easy|medium|hard",
   "required_tools": ["tool1", "tool2"],
   "solution_strategy": "brief description of recommended approach",
-  "workflow": "workflow_identifier"
+  "workflow": "workflow_identifier",
+  "task": "solve|derivative|integral|simplify"
 }
 
 Available tools:

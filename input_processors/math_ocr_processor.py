@@ -139,16 +139,33 @@ class MathOCRProcessor:
             logger.warning(f"EasyOCR cache failed: {e}")
             return easyocr.Reader(["en"], gpu=False)
 
-    # --------------------------------------------------
-    # LaTeX Cleaning
-    # --------------------------------------------------
+    def preprocess_image(self, image: Image.Image) -> Image.Image:
+        """
+        Enhance image for better OCR: grayscale, contrast, and thresholding.
+        """
+        from PIL import ImageEnhance, ImageOps
+
+        # 1. Grayscale
+        processed = image.convert("L")
+
+        # 2. Contrast Enhancement
+        enhancer = ImageEnhance.Contrast(processed)
+        processed = enhancer.enhance(2.0)
+
+        # 3. Thresholding (Binary)
+        # Using a simple adaptive-like thresholding via point lookup
+        threshold = 128
+        processed = processed.point(lambda p: 255 if p > threshold else 0)
+        
+        # 4. Optional: Invert if background is dark
+        # (Assuming light background for most math problems)
+        
+        return processed
 
     def _clean_latex(self, latex: str) -> str:
         """
-        Remove purely formatting tokens while preserving math structures 
-        (like \\sin, \\cos, \\mu, \\theta, \\frac, etc.)
+        Original internal cleaner for solver compatibility.
         """
-
         if not latex:
             return latex
 
@@ -165,84 +182,152 @@ class MathOCRProcessor:
         latex = re.sub(r'\\;', ' ', latex)
         latex = re.sub(r'\\quad', ' ', latex)
         
-        # normalize exponents to ^ (from ** if present in OCR results or manual edits)
+        # normalize exponents to ^
         latex = latex.replace('**', '^')
 
         # normalize spaces
         latex = latex.replace('\n', ' ')
         latex = re.sub(r'\s+', ' ', latex)
 
-        # remove extra whitespace
-        latex = latex.strip()
+        return latex.strip()
 
-        return latex
+    def clean_latex_output(self, text: str) -> str:
+        """
+        Converts LaTeX into human-readable text and normalizes for SymPy.
+        Also removes question numbers and preserves basic math structure.
+        """
+        if not text:
+            return text
+
+        # 1. Remove Question Numbers (e.g., "1.", "Q1.", "Question 1.")
+        text = re.sub(r"^\d+\.", "", text)
+        text = re.sub(r"^Q\d+\.", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(Question|q)\s*\d+[:\.]?", "", text, flags=re.IGNORECASE)
+
+        # 2. Handle common LaTeX math structures before removing backslashes
+        # Handle \frac{a}{b} -> a/b
+        text = re.sub(r'\\frac\{(.*?)\}\{(.*?)\}', r'\1/\2', text)
+        
+        # Preserve common functions (sin, cos, tan, log, ln, sqrt, lim, int) by removing backslash only
+        functions = ["sin", "cos", "tan", "log", "ln", "sqrt", "lim", "int"]
+        for func in functions:
+            text = text.replace(f"\\{func}", func)
+
+        # 3. Remove LaTeX environments
+        text = re.sub(r'\\begin\{.*?\}', '', text)
+        text = re.sub(r'\\end\{.*?\}', '', text)
+
+        # 4. Remove remaining LaTeX commands (backslashed words)
+        text = re.sub(r'\\[a-zA-Z]+', '', text)
+
+        # 5. Remove curly braces
+        text = text.replace("{", "")
+        text = text.replace("}", "")
+
+        # 6. SymPy Normalization: replace ^ with **
+        text = text.replace("^", "**")
+
+        # Clean spaces
+        text = re.sub(r'\s+', ' ', text)
+
+        return text.strip()
+
+    def contains_math(self, text: str) -> bool:
+        """
+        Detects if the text contains mathematical patterns.
+        """
+        patterns = [
+            r"x\^",
+            r"\d+\^",
+            r"x\*\*",
+            r"\d+\*\*",
+            r"[+\-*/=]", # Operators
+            r"[a-z]\([a-z]\)", # Function notation
+            r"∫",
+            r"√",
+            r"\\frac", # LaTeX remnants in context
+            r"sum|log|sin|cos|tan" # Keywords
+        ]
+
+        for p in patterns:
+            if re.search(p, text, re.IGNORECASE):
+                return True
+
+        return False
 
     # --------------------------------------------------
     # OCR Pipeline
     # --------------------------------------------------
 
     def process_image(self, image_input) -> Dict[str, Any]:
-
+        """
+        Two-Pass OCR Strategy:
+        1. Preprocess + EasyOCR for context.
+        2. If math detected: Pix2Tex for precision.
+        3. Merge results.
+        """
         image = self._load_image(image_input)
+        preprocessed_image = self.preprocess_image(image)
 
         # -----------------------------
-        # Pix2Tex Extraction
+        # PASS 1: EasyOCR for context
         # -----------------------------
+        logger.info("Pass 1: Running EasyOCR for context...")
+        image_np = np.array(preprocessed_image)
+        easy_results = self.easyocr_reader.readtext(image_np)
+        
+        easy_text = " ".join([r[1] for r in easy_results])
+        avg_conf = np.mean([r[2] for r in easy_results]) if easy_results else 0.0
 
-        if self.pix2tex_model:
-
+        # -----------------------------
+        # Detect Math Presence
+        # -----------------------------
+        # We use a broad check to see if it's worth running Pix2Tex
+        is_math = self.contains_math(easy_text)
+        
+        if is_math and self.pix2tex_model:
+            # -----------------------------
+            # PASS 2: Pix2Tex for precision
+            # -----------------------------
+            logger.info("Pass 2: Math detected. Running Pix2Tex for precision...")
             try:
+                # Run Pix2Tex on the original image (it handles its own normalization)
+                raw_latex = self.pix2tex_model(image)
+                
+                if raw_latex:
+                    cleaned_expression = self.clean_latex_output(raw_latex)
+                    
+                    # Merge Strategy: 
+                    # If EasyOCR detected instructions (Differentiate, Solve, etc.), 
+                    # we try to keep them if they are at the start.
+                    instruction_match = re.search(r"^(Differentiate|Solve|Integrate|Evaluate|Simplify|Find)\b", easy_text, re.IGNORECASE)
+                    
+                    if instruction_match:
+                        instruction = instruction_match.group(0)
+                        final_text = f"{instruction} {cleaned_expression}"
+                    else:
+                        final_text = cleaned_expression
 
-                gray = image.convert("L")
-                extrema = gray.getextrema()
-
-                if extrema[0] != extrema[1]:
-
-                    latex = self.pix2tex_model(image)
-
-                    if latex:
-
-                        clean_latex = self._clean_latex(latex)
-
-                        return {
-                            "method": "pix2tex",
-                            "latex": latex,  # Keep original latex for UI rendering
-                            "extracted_text": clean_latex, # Use cleaned for solver
-                            "raw_latex": latex,
-                            "confidence": 1.0
-                        }
-
-                else:
-                    logger.warning("Image appears empty, skipping Pix2Tex")
-
+                    return {
+                        "method": "pix2tex_two_pass",
+                        "latex": raw_latex,
+                        "extracted_text": final_text,
+                        "instruction": instruction_match.group(0) if instruction_match else None,
+                        "expression": cleaned_expression,
+                        "confidence": 1.0
+                    }
             except Exception as e:
-                logger.warning(f"Pix2Tex failed: {e}")
+                logger.warning(f"Pix2Tex failed in two-pass: {e}")
 
         # -----------------------------
-        # EasyOCR Fallback
+        # FALLBACK: Return EasyOCR text
         # -----------------------------
-
-        image_np = np.array(image)
-
-        results = self.easyocr_reader.readtext(image_np)
-
-        texts = []
-        confidences = []
-
-        for _, text, conf in results:
-            texts.append(text)
-            confidences.append(conf)
-
-        extracted_text = " ".join(texts)
-
-        avg_conf = np.mean(confidences) if confidences else 0
-
+        logger.info("Returning EasyOCR fallback result.")
         return {
-            "method": "easyocr",
+            "method": "easyocr_fallback",
             "latex": None,
-            "extracted_text": extracted_text,
-            "confidence": float(avg_conf),
-            "segments": results
+            "extracted_text": easy_text,
+            "confidence": float(avg_conf)
         }
 
     # --------------------------------------------------

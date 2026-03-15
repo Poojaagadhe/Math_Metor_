@@ -9,6 +9,9 @@ from rag.retriever import Retriever
 from utils.config import Config
 from utils.logger import setup_logger
 from math_engine.expression_translator import ExpressionTranslator
+from tools.calculus_tool import CalculusTool
+from tools.sympy_tool import SympyTool
+from tools.function_tool import FunctionTool
 
 logger = setup_logger(__name__)
 
@@ -25,6 +28,13 @@ class SolverAgent(BaseAgent):
 
         self.retriever = retriever or Retriever()
         self.translator = ExpressionTranslator()
+        
+        # Initialize tools
+        self.tools = {
+            "calculus_tool": CalculusTool(),
+            "sympy_tool": SympyTool(),
+            "function_tool": FunctionTool()
+        }
 
     # --------------------------------------------------
 
@@ -39,15 +49,34 @@ class SolverAgent(BaseAgent):
         plan = input_data.get("plan", {})
 
         # ----------------------------------------------
-        # STEP 1: Attempt deterministic solving
+        # STEP 1: Attempt deterministic solving via Tools
         # ----------------------------------------------
+        
+        strategy = plan.get("strategy")
+        tool_result = None
+        
+        if strategy in self.tools:
+            logger.info(f"Executing tool: {strategy}")
+            tool_result = self.tools[strategy].run(problem_text)
+            
+        if tool_result:
+            logger.info(f"Solved using tool: {strategy}")
+            return {
+                "solution": str(tool_result).replace('**', '^'),
+                "steps": [
+                    f"Identified task as {strategy.split('_')[0]}",
+                    f"Executed {strategy.replace('_', ' ').title()}"
+                ],
+                "intermediate_results": [],
+                "retrieved_context": [],
+                "tools_used": [strategy]
+            }
 
+        # Fallback to internal symbolic solver if no tool result
         symbolic_solution = self._solve_symbolically(problem_text, parsed_data)
 
         if symbolic_solution:
-
-            logger.info("Solved using symbolic math")
-
+            logger.info("Solved using internal symbolic fallback")
             return {
                 "solution": symbolic_solution,
                 "steps": [
@@ -56,7 +85,7 @@ class SolverAgent(BaseAgent):
                 ],
                 "intermediate_results": [],
                 "retrieved_context": [],
-                "tools_used": ["sympy"]
+                "tools_used": ["sympy_internal"]
             }
 
         # ----------------------------------------------

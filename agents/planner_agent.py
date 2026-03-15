@@ -20,27 +20,34 @@ class PlannerAgent(BaseAgent):
 
         problem_text = input_data.get("problem_text", "")
         topic = input_data.get("topic", "unknown")
+        routing = input_data.get("routing", {})
+        task = routing.get("task", "simplify")
 
-        plan = self._rule_based_plan(problem_text, topic)
+        plan = self._rule_based_plan(problem_text, topic, task)
 
         return plan
 
-    def _rule_based_plan(self, text: str, topic: str):
+    def _rule_based_plan(self, text: str, topic: str, task: str):
 
-        text = text.lower()
+        text_lower = text.lower()
 
-        if "derivative" in text or "d/dx" in text:
+        # 1. Specialized Task Routing (from RouterAgent)
+        if task in ["derivative", "integral"]:
             return {"strategy": "calculus_tool"}
 
-        if re.search(r"f\(\d+\)", text):
-            return {"strategy": "function_eval"}
+        # 2. Specific Pattern Routing (Function Evaluation)
+        if re.search(r"f\(\d+\)", text_lower):
+            return {"strategy": "function_tool"}
 
-        if "=" in text:
-            return {"strategy": "symbolic_solver"}
+        # 3. Solver Routing
+        if task in ["solve", "simplify"]:
+            return {"strategy": "sympy_tool"}
 
+        # 4. Topic-based Fallback
         if topic == "probability":
             return {"strategy": "rag_reasoning"}
 
+        # 5. Default Fallback
         return {"strategy": "llm_reasoning"}
 
     def plan_ocr_correction(self, text: str, feedback: str) -> str:

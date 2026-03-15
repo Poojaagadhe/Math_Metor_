@@ -199,7 +199,22 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
             trace["router"] = {
                 "status": "completed",
-                "summary": routing.get("workflow", "default")
+                "summary": routing.get("task", routing.get("workflow", "default"))
+            }
+
+        # ---------------- Planner Agent ----------------
+
+        with st.status(f"Planner Agent Running... (Attempt {attempt+1})"):
+            
+            plan = base_components["planner_agent"].run({
+                "problem_text": parsed.get("problem_text"),
+                "topic": parsed.get("topic"),
+                "routing": routing
+            })
+
+            trace["planner"] = {
+                "status": "completed",
+                "summary": plan.get("strategy", "llm_reasoning")
             }
 
         # ---------------- Similar Problems ----------------
@@ -220,7 +235,8 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
                 "problem_text": parsed.get("problem_text"),
                 "topic": parsed.get("topic"),
                 "routing": routing,
-                "parsed_data": parsed
+                "parsed_data": parsed,
+                "plan": plan
             })
 
             trace["solver"] = {
@@ -410,15 +426,10 @@ with tab2:
 
         st.image(uploaded_image, caption="Uploaded Image", use_container_width=True)
 
-        # ── Add Image Content Type Selector ──
-        image_type = st.radio(
-            "Select Image Content Type:",
-            ["Math Equation (Pix2Tex)", "General Text / Word Problem (Vision / EasyOCR)"],
-            horizontal=True,
-            key="ocr_image_type"
-        )
+        # -- Automated OCR caption --
+        st.caption("The system automatically detects equations or text from the uploaded image.")
 
-        # ── STEP 1: Extract button ─────────────────────────────────
+        # -- STEP 1: Extract button ---------------------------------
         if st.button("🔍 Extract Text from Image", key="extract_image_problem"):
 
             # Save uploaded file
@@ -434,44 +445,16 @@ with tab2:
             ocr_method = "Unknown"
             confidence = 0.0
 
-            # ── Pix2Tex (best for math equations) ──
-            if image_type == "Math Equation (Pix2Tex)":
-                try:
-                    with st.spinner("Running Pix2Tex OCR..."):
-                        result = get_heavy_component("math_ocr").process_image(save_path)
-                    
-                    # MathOCRProcessor falls back to easyocr internally if Pix2Tex fails. 
-                    # We only consider it a Pix2Tex success if 'latex' is present or method is 'pix2tex'.
-                    if result.get("method") == "pix2tex" or result.get("latex"):
-                        latex_text = result.get("latex") or ""
-                        extracted_text = latex_text if latex_text else result.get("extracted_text", "")
-                        ocr_method = "Pix2Tex"
-                        confidence = result.get("confidence", 0.0)
-                except Exception as e:
-                    st.warning(f"⚠️ Pix2Tex error: {e} - falling back to secondary OCR.")
-
-            # ── Groq Vision fallback ──
-            if not extracted_text:
-                vision_ocr = get_heavy_component("vision_ocr")
-                if vision_ocr.is_available():
-                    with st.spinner("🤖 Running Groq Vision OCR..."):
-                        v_result = vision_ocr.process_image(save_path)
-                    if v_result.get("success") and v_result.get("extracted_text"):
-                        extracted_text = v_result["extracted_text"]
-                        ocr_method = f"Groq Vision ({v_result.get('model', 'vision')})"
-                        confidence = v_result.get("confidence", 0.95)
-                    else:
-                        st.warning("⚠️ Groq Vision failed - falling back to EasyOCR.")
-
-            # ── EasyOCR last resort ──
-            if not extracted_text:
-                st.warning("Pix2Tex and Vision unavailable – using EasyOCR.")
-                with st.spinner("Running EasyOCR..."):
-                    # We can use the image processor's EasyOCR
-                    result = get_heavy_component("image_processor").process_image(save_path)
+            # -- Automated Extraction via MathOCRProcessor --
+            try:
+                with st.spinner("Running automated OCR..."):
+                    result = get_heavy_component("math_ocr").process_image(save_path)
+                
                 extracted_text = result.get("extracted_text", "")
-                confidence = result.get("confidence", 0)
-                ocr_method = "EasyOCR"
+                ocr_method = result.get("method", "Unknown").title()
+                confidence = result.get("confidence", 0.0)
+            except Exception as e:
+                st.warning(f"⚠️ Automated OCR error: {e}")
 
             # Persist to session_state so it survives the next Streamlit rerun
             st.session_state["image_extracted_text"] = extracted_text
@@ -479,7 +462,7 @@ with tab2:
             st.session_state["image_confidence"] = confidence
             st.session_state["image_save_path"] = str(save_path)
 
-        # ── STEP 2: Show editor and Solve (OUTSIDE Extract block) ──
+        # -- STEP 2: Show editor and Solve (OUTSIDE Extract block) --
         # These render on every run as long as session_state has results
         if st.session_state.get("image_extracted_text") is not None:
 
