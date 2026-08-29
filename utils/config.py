@@ -65,8 +65,19 @@ class Config:
     GEMINI_MODEL = _get("GEMINI_MODEL", "gemini-pro")
     
     # Groq Settings
-    GROQ_API_KEY = _get("GROQ_API_KEY", "")
-    GROQ_MODEL = _get("GROQ_MODEL", "llama-3.1-8b-instant")
+    _DEPRECATED_GROQ_MODELS = {
+        "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+        "llama-3.1-70b-versatile": "openai/gpt-oss-120b",
+        "llama-3.2-11b-vision-preview": "qwen/qwen3.8-27b",
+        "llama-3.2-90b-vision-preview": "qwen/qwen3.8-27b",
+        "llama3-8b-8192": "openai/gpt-oss-20b",
+        "llama3-70b-8192": "openai/gpt-oss-120b",
+        "mixtral-8x7b-32768": "openai/gpt-oss-20b",
+        "gemma-7b-it": "openai/gpt-oss-20b",
+        "gemma2-9b-it": "openai/gpt-oss-20b",
+    }
+    _raw_groq_model = _get("GROQ_MODEL", "openai/gpt-oss-20b")
+    GROQ_MODEL = _DEPRECATED_GROQ_MODELS.get(_raw_groq_model, _raw_groq_model)
     
     # Hugging Face Settings
     HUGGINGFACE_API_KEY = _get("HUGGINGFACE_API_KEY", "")
@@ -82,7 +93,9 @@ class Config:
         _advanced_model = GEMINI_MODEL
     elif LLM_PROVIDER == "groq":
         _default_model = GROQ_MODEL
-        _advanced_model = GROQ_MODEL
+        _advanced_model = _get("GROQ_ADVANCED_MODEL", GROQ_MODEL)
+        if _advanced_model in _DEPRECATED_GROQ_MODELS:
+            _advanced_model = _DEPRECATED_GROQ_MODELS[_advanced_model]
     elif LLM_PROVIDER == "huggingface":
         _default_model = HUGGINGFACE_MODEL
         _advanced_model = HUGGINGFACE_MODEL

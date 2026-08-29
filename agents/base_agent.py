@@ -75,6 +75,20 @@ class BaseAgent(ABC):
 
         self.groq_client = Groq(api_key=api_key)
 
+        deprecated_groq_map = {
+            "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+            "llama-3.1-70b-versatile": "openai/gpt-oss-120b",
+            "llama-3.2-11b-vision-preview": "qwen/qwen3.8-27b",
+            "llama-3.2-90b-vision-preview": "qwen/qwen3.8-27b",
+            "llama3-8b-8192": "openai/gpt-oss-20b",
+            "llama3-70b-8192": "openai/gpt-oss-120b",
+            "mixtral-8x7b-32768": "openai/gpt-oss-20b",
+            "gemma-7b-it": "openai/gpt-oss-20b",
+            "gemma2-9b-it": "openai/gpt-oss-20b",
+        }
+        if self.model in deprecated_groq_map:
+            self.model = deprecated_groq_map[self.model]
+
         logger.info(f"{self.name} initialized with Groq model {self.model}")
 
     def _init_gemini(self):
