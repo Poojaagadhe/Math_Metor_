@@ -188,7 +188,11 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
 
             trace["parser"] = {
                 "status": "completed",
-                "summary": f"Topic: {parsed.get('topic','unknown')}"
+                "summary": (
+                    f"Topic: {parsed.get('topic','unknown')} | "
+                    f"Subtopic: {parsed.get('subtopic','unknown')} | "
+                    f"Difficulty: {parsed.get('difficulty','unknown')}"
+                )
             }
 
         # ---------------- Router Agent ----------------
@@ -299,6 +303,7 @@ def process_problem(problem_text, source, image_path=None, audio_path=None):
             "solution": solution.get("solution"),
             "steps": solution.get("steps"),
             "topic": parsed.get("topic"),
+            "difficulty": parsed.get("difficulty", "Medium"),
             "retrieved_context": solution.get("retrieved_context",[])
         })
 

@@ -18,18 +18,48 @@ class ExplainerAgent(BaseAgent):
         )
         self.visualizer = MathVisualizer()
         
+    # ------------------------------------------------------------------
+    # Difficulty-adaptive helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_max_tokens(topic: str, difficulty: str) -> int:
+        """Scale token budget by topic/difficulty to keep responses proportional."""
+        if topic == "Arithmetic" or difficulty == "Easy":
+            return 400
+        if difficulty == "Hard":
+            return 1500
+        return 800  # Medium default
+
+    @staticmethod
+    def _get_prompt_mode(topic: str, difficulty: str) -> str:
+        """Return 'concise', 'standard', or 'detailed' based on difficulty."""
+        if topic == "Arithmetic" or difficulty == "Easy":
+            return "concise"
+        if difficulty == "Hard":
+            return "detailed"
+        return "standard"
+
+    # ------------------------------------------------------------------
+
     def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate student-friendly explanation
-        
+        Generate student-friendly explanation.
+
+        The explanation depth and token budget are scaled automatically:
+          - Easy / Arithmetic  → concise (≤ 400 tokens, 2-3 sentences)
+          - Medium             → standard step-by-step (≤ 800 tokens)
+          - Hard               → full detailed treatment (≤ 1500 tokens)
+
         Args:
             input_data: Dictionary containing:
                 - problem_text: Original problem
                 - solution: Final answer
                 - steps: Solution steps
                 - topic: Problem topic
+                - difficulty: Easy|Medium|Hard (optional, defaults to Medium)
                 - retrieved_context: Context used
-                
+
         Returns:
             Dictionary containing:
                 - explanation: Formatted explanation
@@ -37,35 +67,43 @@ class ExplainerAgent(BaseAgent):
                 - formulas_used: List of formulas with citations
         """
         logger.info("Generating explanation...")
-        
+
         problem_text = input_data.get('problem_text', '')
         solution = input_data.get('solution', '')
         steps = input_data.get('steps', [])
         topic = input_data.get('topic', '')
+        difficulty = input_data.get('difficulty', 'Medium')
         contexts = input_data.get('retrieved_context', [])
-        
+
+        max_tokens = self._get_max_tokens(topic, difficulty)
+        mode = self._get_prompt_mode(topic, difficulty)
+
+        logger.info(f"Explanation mode: {mode} | max_tokens: {max_tokens}")
+
         # Create explanation prompt
-        system_prompt = self._get_system_prompt()
-        user_prompt = self._create_user_prompt(problem_text, solution, steps, topic, contexts)
-        
+        system_prompt = self._get_system_prompt(mode)
+        user_prompt = self._create_user_prompt(
+            problem_text, solution, steps, topic, contexts, mode
+        )
+
         messages = [
             self._create_system_message(system_prompt),
             self._create_user_message(user_prompt)
         ]
-        
-        # Call LLM
-        response = self._call_llm(messages, max_tokens=1500)
-        
+
+        # Call LLM with adaptive token budget
+        response = self._call_llm(messages, max_tokens=max_tokens)
+
         # Extract key concepts and formulas
         key_concepts = self._extract_concepts(response, topic)
         formulas = self._extract_formulas(contexts)
-        
+
         # Generate visualizations - DISABLED (producing incorrect graphs)
         # images = self._generate_visualizations(problem_text, solution, steps, topic)
         images = []  # Disabled for now
-        
-        logger.info(f"Explanation generated")
-        
+
+        logger.info("Explanation generated")
+
         return {
             "explanation": response,
             "key_concepts": key_concepts,
@@ -73,14 +111,22 @@ class ExplainerAgent(BaseAgent):
             "visualization_images": images
         }
         
-    def _get_system_prompt(self) -> str:
-        """Get system prompt for explainer"""
-        return """You are a patient math tutor. Your job is to:
+    def _get_system_prompt(self, mode: str = "standard") -> str:
+        """Get system prompt for explainer — scaled by mode."""
+
+        if mode == "concise":
+            return """You are a friendly math tutor.
+Explain the solution in 2-3 plain-English sentences. State what the problem asks,
+what operation to perform, and what the answer is. Keep it simple and encouraging.
+Do NOT write multi-section explanations or long step-by-step breakdowns for simple arithmetic."""
+
+        if mode == "detailed":
+            return """You are an expert math tutor. Your job is to:
 1. Explain the solution in a clear, student-friendly way
-2. Break down complex steps into simple concepts
-3. Provide intuition for why each step works
-4. Cite formulas and theorems used
-5. Highlight common mistakes to avoid
+2. Break down complex steps into simple concepts with intuition
+3. Cite formulas, theorems, and rules used
+4. Highlight common mistakes to avoid
+5. Provide background concepts where helpful
 
 Format your explanation as:
 
@@ -88,7 +134,7 @@ Format your explanation as:
 [Explain what the problem is asking in simple terms]
 
 # Solution Approach
-[Explain the overall strategy]
+[Explain the overall strategy and why it works]
 
 # Step-by-Step Explanation
 
@@ -109,6 +155,31 @@ Format your explanation as:
 - [Common mistake to avoid]
 
 Use clear language. Explain WHY, not just WHAT. Make it educational."""
+
+        # standard (Medium)
+        return """You are a patient math tutor. Your job is to:
+1. Explain the solution in a clear, student-friendly way
+2. Break down each step with intuition
+3. Cite formulas and rules used
+4. Highlight common mistakes to avoid
+
+Format your explanation as:
+
+# Problem Understanding
+[Explain what the problem is asking]
+
+# Step-by-Step Explanation
+
+## Step 1: [Title]
+[Explanation]
+
+## Step 2: [Title]
+[Explanation]
+
+# Final Answer
+[Restate the answer clearly]
+
+Use clear language. Explain WHY, not just WHAT."""
         
     def _create_user_prompt(
         self,
@@ -116,18 +187,27 @@ Use clear language. Explain WHY, not just WHAT. Make it educational."""
         solution: str,
         steps: list,
         topic: str,
-        contexts: list
+        contexts: list,
+        mode: str = "standard",
     ) -> str:
-        """Create user prompt"""
+        """Create user prompt — scaled by mode."""
+
+        if mode == "concise":
+            return (
+                f"Explain this arithmetic result briefly (2-3 sentences):\n\n"
+                f"Problem: {problem_text}\n"
+                f"Answer: {solution}"
+            )
+
         steps_text = "\n\n".join(steps) if steps else "Solution provided without detailed steps"
-        
-        # Extract relevant formulas from context
+
+        # Extract relevant formulas from context (only for standard/detailed)
         formulas_text = ""
-        if contexts:
+        if contexts and mode == "detailed":
             formulas_text = "\n\nRelevant formulas and concepts:\n"
-            for ctx in contexts[:2]:  # Use top 2 contexts
+            for ctx in contexts[:2]:
                 formulas_text += f"- {ctx.get('content', '')[:200]}...\n"
-        
+
         return f"""Create a student-friendly explanation for this solution:
 
 **Problem** ({topic}):
