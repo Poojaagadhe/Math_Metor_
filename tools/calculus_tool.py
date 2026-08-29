@@ -1,3 +1,4 @@
+import re
 import sympy as sp
 from tools.base_tool import BaseTool
 
@@ -8,33 +9,46 @@ class CalculusTool(BaseTool):
     def run(self, query: str):
 
         try:
-            q_lower = query.lower()
-            if "derivative" in q_lower or "differentiate" in q_lower or "d/dx" in q_lower:
+            q_norm = query.replace("’", "'").replace("′", "'").replace("‵", "'").replace("`", "'")
+            q_lower = q_norm.lower()
 
-                # Extract expression after = or after the keyword
-                if "=" in query:
-                    expr_str = query.split("=")[-1].strip()
+            if any(kw in q_lower for kw in ["derivative", "differentiate", "d/dx", "f'(x)", "f'"]):
+
+                # If the problem has f(x) = <expr>
+                match_fn = re.search(r"f\([a-zA-Z]\)\s*=\s*([^,\?]+)", q_norm)
+                if match_fn:
+                    expr_str = match_fn.group(1).strip()
+                elif "=" in q_norm:
+                    # Expression after =
+                    expr_str = q_norm.split("=")[-1].strip()
+                    expr_str = re.split(r"[,;]|\b(?:find|where|calculate|evaluate)\b", expr_str, flags=re.IGNORECASE)[0].strip()
                 else:
-                    # Try to find math after the keyword
-                    match = re.search(r"(derivative|differentiate|d/dx)\s+of?\s*(.*)", q_lower)
+                    match = re.search(r"(?:derivative|differentiate|d/dx)\s+of?\s*(.*)", q_lower)
                     if match:
-                        expr_str = match.group(2).strip()
+                        expr_str = match.group(1).strip()
                     else:
-                        # Just take the whole string if no specific match
-                        expr_str = query
+                        expr_str = q_norm
 
-                # Clean up any remaining words if it's a mixed sentence
-                expr_str = re.sub(r"^[^\d x\(]+", "", expr_str).strip()
+                # Clean trailing punctuation
+                expr_str = re.sub(r"[,\?\.\!]+$", "", expr_str).strip()
+
+                # Fix OCR dropped exponents: e.g. x2 -> x^2, 2x2 -> 2*x^2
+                expr_str = re.sub(r'(\d+)([a-zA-Z])(\d+)', r'\1*\2^\3', expr_str)
+                expr_str = re.sub(r'(?<![a-zA-Z])([a-zA-Z])(\d+)', r'\1^\2', expr_str)
+
+                # Add implicit multiplication for numbers followed by variables (e.g. 5x -> 5*x, 2x^2 -> 2*x^2)
+                expr_str = re.sub(r'(\d+)([a-zA-Z])', r'\1*\2', expr_str)
+
+                # SymPy normalization
+                expr_str = expr_str.replace("^", "**")
 
                 x = sp.symbols('x')
-                # Sympy normalization (just in case)
-                expr_str = expr_str.replace("^", "**")
-                
-                result = sp.diff(expr_str, x)
+                sym_expr = sp.sympify(expr_str)
+                result = sp.diff(sym_expr, x)
 
-                return f"Derivative = {result}"
+                return f"f'(x) = {result}".replace('**', '^')
 
-        except Exception as e:
+        except Exception:
             return None
 
         return None

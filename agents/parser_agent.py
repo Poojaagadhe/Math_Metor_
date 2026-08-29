@@ -67,19 +67,19 @@ class ParserAgent(BaseAgent):
     def _clean_text(self, text: str) -> str:
         """Fix common OCR errors and normalize math symbols"""
 
-        # Common substitution errors
-        text = text.replace("x3", "x^3")
-        text = text.replace("z3", "z^3")
+        # Handle primes (OCR often turns ' into `, ., unicode primes, or curly quotes)
+        text = text.replace("’", "'").replace("′", "'").replace("‵", "'").replace("`", "'")
+        text = text.replace("f.(x)", "f'(x)")
         text = text.replace("f(z)", "f(x)") # Often misread when x has a prime next to it
-        
+
         # Normalize characters
         text = text.replace("−", "-")
         text = text.replace("×", "*")
         text = text.replace("•", "*")
-        
-        # Handle primes (OCR often turns ' into ` or .)
-        text = text.replace("f`(x)", "f'(x)")
-        text = text.replace("f.(x)", "f'(x)")
+
+        # Fix OCR dropped exponents: e.g. x2 -> x^2, 2x2 -> 2x^2, x3 -> x^3 (avoiding words like dx)
+        text = re.sub(r'(?<![a-zA-Z])([xyzXYZ])(\d+)', r'\1^\2', text)
+        text = re.sub(r'(\d+)([xyzXYZ])(\d+)', r'\1\2^\3', text)
 
         text = re.sub(r"\s+", " ", text)
 

@@ -21,9 +21,10 @@ class RouterAgent(BaseAgent):
         """
         Lightweight rule detection for math tasks.
         """
-        text_lower = text.lower()
+        text_norm = text.replace("’", "'").replace("′", "'").replace("‵", "'").replace("`", "'")
+        text_lower = text_norm.lower()
 
-        if any(kw in text_lower for kw in ["f'(x)", "derivative", "differentiate", "d/dx"]):
+        if any(kw in text_lower for kw in ["f'(x)", "f'", "derivative", "differentiate", "d/dx", "dy/dx", "df/dx"]):
             return "derivative"
 
         if any(kw in text_lower for kw in ["integrate", "integral", "∫"]):

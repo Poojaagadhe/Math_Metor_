@@ -174,32 +174,32 @@ class SolverAgent(BaseAgent):
         # ---- 3. Derivative Detection ----
 
         try:
-            # Look for "f'(x)" or "derivative of ..."
-            derivative_requested = False
-            expr_to_diff = None
+            norm_text = text.replace("’", "'").replace("′", "'").replace("‵", "'").replace("`", "'")
+            text_lower = norm_text.lower()
             
-            # Pattern for f'(x)
-            if "f'(x)" in text or "derivative" in text.lower() or "d/dx" in text.lower():
-                derivative_requested = True
-                
-            if derivative_requested:
-                # Try to extract expression from f(x) = ...
-                expr_match = re.search(r"f\(x\)\s*=\s*([^,\?]+)", text)
+            # Pattern for f'(x) / derivative
+            if any(kw in text_lower for kw in ["f'(x)", "f'", "derivative", "differentiate", "d/dx"]):
+                expr_match = re.search(r"f\([a-zA-Z]\)\s*=\s*([^,\?]+)", norm_text)
                 if expr_match:
                     expr_to_diff = expr_match.group(1).strip()
-                elif "=" in text:
-                    # Fallback to text after =
-                    expr_to_diff = text.split("=")[-1].strip()
-                    # Clean up trailing punctuation
-                    expr_to_diff = re.sub(r"[,\?\.!]+$", "", expr_to_diff)
+                elif "=" in norm_text:
+                    expr_to_diff = norm_text.split("=")[-1].strip()
+                    expr_to_diff = re.split(r"[,;]|\b(?:find|where|calculate|evaluate)\b", expr_to_diff, flags=re.IGNORECASE)[0].strip()
+                else:
+                    match_diff = re.search(r"(?:derivative|differentiate|d/dx)\s+of?\s*(.*)", text_lower)
+                    expr_to_diff = match_diff.group(1).strip() if match_diff else norm_text
 
-                if expr_to_diff:
-                    x = sp.symbols("x")
-                    # Convert ^ to ** and perform sympify
-                    sp_expr = sp.sympify(expr_to_diff.replace("^", "**"))
-                    derivative = sp.diff(sp_expr, x)
-                    
-                    return f"f'(x) = {derivative}".replace('**', '^')
+                expr_to_diff = re.sub(r"[,\?\.\!]+$", "", expr_to_diff).strip()
+                expr_to_diff = re.sub(r'(\d+)([a-zA-Z])(\d+)', r'\1*\2^\3', expr_to_diff)
+                expr_to_diff = re.sub(r'(?<![a-zA-Z])([a-zA-Z])(\d+)', r'\1^\2', expr_to_diff)
+                expr_to_diff = re.sub(r'(\d+)([a-zA-Z])', r'\1*\2', expr_to_diff)
+                expr_to_diff = expr_to_diff.replace("^", "**")
+
+                x = sp.symbols("x")
+                sp_expr = sp.sympify(expr_to_diff)
+                derivative = sp.diff(sp_expr, x)
+                
+                return f"f'(x) = {derivative}".replace('**', '^')
 
         except Exception as e:
             logger.warning(f"Derivative computation failed: {e}")
